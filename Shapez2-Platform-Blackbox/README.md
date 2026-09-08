@@ -49,6 +49,9 @@ The end goal is to replace the selection in place with a small platform that beh
 identically — items in, items out, same rates — with the real factory still running out of
 sight, and a way to look inside and edit it.
 
+See [DESIGN.md](DESIGN.md) for the full analysis, including what was measured rather than
+assumed and what to try next.
+
 The route that looks most promising keeps the captured factory as **real platforms parked
 somewhere out of view**, with the stand-in platform tunnelling items to and from it. That
 way the simulation, the save format and the rendering all keep working exactly as they do
