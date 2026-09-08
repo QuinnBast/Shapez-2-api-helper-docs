@@ -52,20 +52,17 @@ sight, and a way to look inside and edit it.
 See [DESIGN.md](DESIGN.md) for the full analysis, including what was measured rather than
 assumed and what to try next.
 
-The route that looks most promising keeps the captured factory as **real platforms parked
-somewhere out of view**, with the stand-in platform tunnelling items to and from it. That
-way the simulation, the save format and the rendering all keep working exactly as they do
-now, because every entity involved is an ordinary game entity. Nothing about it is
-approximated.
+The plan is to **share the recipe rather than the machine**: one copy of the captured
+factory's transformation, rate ceiling and port layout, with each placed box carrying only
+the item currently passing through it. Fifty boxes then give fifty times the throughput
+correctly, while costing one simulation each — so a collapsed factory is genuinely smaller
+in the save, not just tidier on the map.
 
-Worth being upfront about two things:
-
-- **It will not make your factory cheaper to run.** The contained platforms still simulate
-  at full cost. This is an organisational tool, not an optimisation.
-- **Deriving behaviour instead of running it** — feeding test shapes through and building a
-  lookup — only works for a straight chain of one-in-one-out machines. Add a stacker, a
-  cutter with two outputs, or a splitter, and behaviour depends on state and ratios rather
-  than a single input.
+For a straight chain of single-input machines the recipe can be derived **exactly**, by
+composing the operations the game already models, rather than approximated from samples.
+Selections whose output depends on accumulated state, or on the mix of shapes arriving, do
+not reduce to a recipe at all — those the mod should decline to collapse rather than get
+quietly wrong.
 
 ## Installing
 
