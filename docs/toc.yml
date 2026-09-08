@@ -43,6 +43,8 @@
       href: howto/read-research-progress.md
     - name: Read production statistics
       href: howto/read-statistics.md
+    - name: Measure what a factory is moving
+      href: howto/measure-throughput.md
 
     - name: "— Game systems"
     - name: Work with shapes
@@ -57,12 +59,16 @@
       href: howto/work-with-blueprints.md
 
     - name: "— Showing things to the player"
+    - name: Add a visualization toggle
+      href: howto/add-a-visualization-toggle.md
     - name: Draw in the world
       href: howto/draw-in-world.md
     - name: Notifications and HUD screens
       href: howto/notifications-and-hud-screens.md
     - name: Building side panel
       href: howto/building-side-panel.md
+    - name: Add to the platform side panel
+      href: howto/island-side-panel.md
 
     - name: "— Tooling and shipping"
     - name: Bind a key

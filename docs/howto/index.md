@@ -40,6 +40,9 @@ there and follow the links.
 | Measure a machine's real throughput | [Read machine state](read-machine-state.md#measuring-actual-throughput) |
 | Gate a feature on the player's progress | [Read research progress](read-research-progress.md) |
 | Get production rates over time | [Read production statistics](read-statistics.md) |
+| Measure what a belt or machine is actually moving | [Measure throughput](measure-throughput.md) |
+| Tell a bottleneck from a starved machine | [Measure throughput](measure-throughput.md#throughput-alone-cannot-find-a-bottleneck) |
+| Total up what a platform ships | [Measure throughput](measure-throughput.md#there-is-more-than-one-way-off-a-platform) |
 
 ## Game systems
 
@@ -55,10 +58,15 @@ there and follow the links.
 
 | Task | Recipe |
 | --- | --- |
+| Add a button to the bottom-right visualization bar | [Add a visualization toggle](add-a-visualization-toggle.md) |
 | Draw a coloured marker over a building or platform | [Draw in the world](draw-in-world.md) |
+| Draw text in the world without a font | [Rendering](../rendering.md#world-space-text-without-a-font) |
+| Stop an overlay showing through the platform above it | [Rendering](../rendering.md#depth-layers-and-overlays) |
 | Draw only when zoomed out to the platform view | [Draw in the world](draw-in-world.md#only-in-overview-mode) |
 | Show a message, or open the research/statistics screen | [Notifications and HUD screens](notifications-and-hud-screens.md) |
 | Add a section to the selected building's panel | [Building side panel](building-side-panel.md) |
+| Add a section to the selected platform's panel | [Platform side panel](island-side-panel.md) |
+| Show a live rate in a panel | [Platform side panel](island-side-panel.md#reuse-the-efficiency-gauge) |
 
 ## Tooling and shipping
 

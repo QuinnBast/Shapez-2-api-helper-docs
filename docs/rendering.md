@@ -208,6 +208,63 @@ Sub-drawers can also implement `IMapSubDrawerIslandEventListener` to be told whe
 islands are registered or unregistered, which is how `IslandOverviewDrawer` keeps its
 per-super-chunk cache honest.
 
+## Depth, layers and overlays
+
+Two facts that decide whether an overlay looks right, and neither is obvious until it looks
+wrong.
+
+**The instanced UI renderer ignores depth.** `options.Renderers.UI` draws over everything,
+which is what the super chunk coordinate labels want — nothing occludes them from out in
+space. It is not what a label sitting on a machine wants: it shows through the platform
+above it. There is no easy fix from a mod, because the depth state belongs to the material
+and the materials come from the game's asset bundles. The practical answers are to scope
+what you draw to the layer being viewed, or to not draw world-space text at all and put the
+information in a side panel.
+
+**Layer visibility is a predicate the game already exposes:**
+
+```csharp
+if (!options.ShouldRenderPlatformContentsAtLayer(chunk.z))
+{
+    continue;   // the player is looking at a lower layer
+}
+```
+
+That is `chunkPlatformLayer <= MaxBuildingIslandLayer` internally.
+
+> [!WARNING]
+> `MaxBuildingIslandLayer` **defaults to 999**, meaning unrestricted. Code shaped like
+> `if (chunk.z == options.MaxBuildingIslandLayer)` — "only annotate the current layer" —
+> therefore matches nothing during ordinary play and silently does nothing. Test against
+> the predicate, and treat any value near 999 as "no layer restriction".
+
+**Translucent draws blend with each other.** An overlay quad drawn on top of another
+overlay quad mixes colours: a green marker at the wash's 55% alpha over a red tile reads
+as *yellow*, not green. If a second layer of drawing is meant to have its own colour, give
+it its own property block at a high alpha rather than reusing the one underneath.
+
+## World-space text without a font
+
+There is no world-space text API, but there is a character atlas — the one behind the
+super chunk labels. `UXSuperChunkCoordinatesRendererMaterial` maps a 7x7 grid:
+
+| Index | Character |
+|---|---|
+| 0–9 | digits `0`–`9` |
+| 10–35 | `A`–`Z` |
+| 36 | `/` |
+| 37 | `-` |
+
+Build one quad per character with UVs into the cell, then draw them side by side through
+`options.Renderers.UI`. `HUDSuperChunkCoordinatesVisualization` is the working example,
+including the slightly surprising UV origin it uses.
+
+Size them by the width the label is allowed to occupy rather than by a fixed world size.
+`Viewport.Zoom` is the camera's **distance** (4 near, 20000 far), so a label of world size
+`s` covers roughly `s / zoom` of the screen — multiply zoom by a constant for a stable
+on-screen size, and cap it so a four-digit number shrinks instead of sprawling across its
+neighbours.
+
 ## Performance notes
 
 - Cull first. `MapCullResult` from `MapDrawer` tells you which super chunks are visible;

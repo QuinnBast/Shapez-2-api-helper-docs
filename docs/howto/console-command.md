@@ -35,6 +35,42 @@ mod called `PlatformEfficiencyOverlay.dll` registering `toggle` gives the player
 `platformefficiencyoverlay.toggle`. That prevents collisions between mods, and it means
 short command names are safe.
 
+## Registering without the prefix
+
+The prefix is good hygiene but long: `platformefficiencyoverlay.toggle` is a lot to type
+while iterating. Implementing `IConsoleRewirer` yourself skips the wrapper that adds it, so
+you can choose a short prefix of your own:
+
+```csharp
+public class MyCommands : IConsoleRewirer
+{
+    public void RegisterCommands(IDebugConsole console)
+    {
+        console.Register("peo.report", context => context.Output?.Invoke(Describe()));
+
+        console.Register("peo.alpha", new DebugConsole.FloatOption("alpha", 0f, 1f),
+            context => Tuning.Alpha = context.GetFloat(0));
+    }
+}
+
+GameRewirers.AddRewirer(new MyCommands(logger));
+```
+
+`context.Output` is an `Action<string>` field and can be null, so invoke it conditionally.
+Wrap each `Register` in its own `try`/`catch` if you register several — the Shifter catches
+per rewirer, so one failure otherwise takes the rest of your commands with it.
+
+## Why this matters more than it looks
+
+A mod DLL is memory-mapped by Mono once loaded, so **new code needs a game restart** —
+there is no hot reload in the Shifter or the game. Anything you would otherwise tune by
+rebuilding is worth exposing as a command instead: colours, thresholds, sizes, heights,
+and any "is this measurement right?" dump.
+
+That turns a five-minute rebuild-and-reload cycle into typing a number, which is the
+difference between tuning something properly and settling for the first value that looked
+acceptable. A `report` command that prints all current values pays for itself immediately.
+
 ## Command signatures
 
 ```csharp

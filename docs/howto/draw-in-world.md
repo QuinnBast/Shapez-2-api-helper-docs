@@ -140,3 +140,12 @@ than not combining at all. The game caches per `SuperChunkCoordinate` and invali
   whole map when the camera sees one corner is the most common performance mistake.
 - Exceptions thrown from a postfix are *not* caught the way sub-drawer exceptions are.
   Wrap your draw body in `try`/`catch` or one bad frame kills every frame.
+- `options.Renderers.UI` **ignores depth**, so anything you draw through it shows through
+  platforms above it. See [depth, layers and overlays](../rendering.md#depth-layers-and-overlays).
+- Two translucent quads stacked on each other blend. A coloured marker drawn over a
+  coloured wash comes out as the mix of the two unless you give it its own near-opaque
+  property block.
+- "Space view" is a player mode, not a zoom level:
+  `options.Player.InteractionState.BaseState == PlayerInteractionBaseState.Islands`.
+  `options.InOverviewMode` is only `Viewport.Zoom > 1500`, so testing zoom alone still
+  draws per-machine detail while the player is placing platforms.

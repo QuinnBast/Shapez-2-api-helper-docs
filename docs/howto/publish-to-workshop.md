@@ -6,8 +6,13 @@
 this page is that script explained, including the one line you **must** change.
 
 > [!WARNING]
-> The sample `SteamPublish.sh` contains `steamcmd +login lorenzo_tobspr` — a tobspr
-> developer account. Copy it unchanged and the upload fails on login. Replace it with
+> Copying a sample's `Steam/` folder brings **three** things you must change, not one.
+> `SteamPublish.sh` contains `steamcmd +login lorenzo_tobspr` — a tobspr developer
+> account — and `base.vdf` still carries that sample's real `publishedfileid`, title and
+> description. Publishing with an inherited id aims your upload at **someone else's
+> workshop item**; it will be refused, but check `base.vdf` before your first run rather
+> than after. Set `publishedfileid` to `0`, fix the title and description, and replace the
+> login with
 > your own Steam account name before running anything.
 
 ## What you need

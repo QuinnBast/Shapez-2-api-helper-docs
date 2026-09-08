@@ -118,6 +118,39 @@ itemSimulation.TraverseLanes(counter);
 > `TraverseLanes` is generic over a `struct` traverser specifically to avoid allocating
 > and to let the JIT inline the callback. Passing a class works but gives up both.
 
+> [!WARNING]
+> `GetItemReceiver` and `GetItemProvider` are **default interface methods that throw**
+> `NotImplementedException` unless the concrete type overrides them, and plenty of
+> simulations implement only one side. Guarding with `try`/`catch` per instance is very
+> expensive on a real save — one type appears tens of thousands of times — so cache the
+> result per `Type` and let each type throw at most once.
+
+### Not every item simulation is an `IItemSimulation`
+
+Two more shapes exist, and code that only handles `IItemSimulation` has silent holes:
+
+| Interface | Used by | Lanes |
+|---|---|---|
+| `IItemBundleSimulation` | space belts, space pipes | `TraverseLanes` over an `ItemLaneBundle`; several parallel lanes, four per building layer |
+| neither | space *fluid* ports | none — fluid is packaged straight into a buffer |
+
+A space belt is a bundle of `FastBeltPathLane`s and does **not** implement
+`IItemSimulation`. A space pipe is the same thing carrying `FluidPackageItem`s.
+
+### A belt run is one simulation
+
+A whole path of belt is a single `ConveyorPathSimulation` with one `BeltPathLane` whose
+`Slots` span the run — not one simulation per tile. It also returns **the same lane
+object** from both accessors:
+
+```csharp
+public IItemReceiver GetItemReceiver(int index) => Lane;
+public IItemProvider GetItemProvider(int index) => Lane;
+```
+
+Reference equality between an input and an output lane is therefore a reliable way to tell
+transport from transformation, without naming any concrete type.
+
 ## The lane model
 
 Items live on lanes. Three interfaces, layered:
@@ -231,6 +264,25 @@ lane.AcceptHook = saved;
 
 Overwriting without chaining silently breaks whatever the machine was doing in its own
 hook — for the cutter above, it would stop cutting.
+
+**For observation, prefer `PostAcceptHook`.** It is a plain multicast delegate — the game
+combines onto it in `CargoPackageTrack` and `PathMergerSimulation` — so you can add and
+remove your own without the save-and-restore dance:
+
+```csharp
+lane.PostAcceptHook = (PostAcceptHookDelegate)Delegate.Combine(
+    lane.PostAcceptHook, new PostAcceptHookDelegate(OnItemAccepted));
+
+// on dispose:
+lane.PostAcceptHook = (PostAcceptHookDelegate)Delegate.Remove(
+    lane.PostAcceptHook, new PostAcceptHookDelegate(OnItemAccepted));
+```
+
+That matters because the vanilla building-efficiency panel replaces `AcceptHook` on
+whichever building the player selects, saving and restoring as it goes. Two parties doing
+save-and-restore on the same slot will drop each other's hooks depending on detach order.
+Reserve `AcceptHook` for when you need to *modify* the item in flight, which is what it is
+for. See [measuring throughput](howto/measure-throughput.md).
 
 ## Worked example: is this machine running?
 

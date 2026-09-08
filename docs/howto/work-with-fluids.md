@@ -133,6 +133,33 @@ transfer mechanism, separate from within-platform pipes. A blocked fluid port is
 fluid equivalent of a backed-up belt port, and the game renders it with
 `FluidPortBlockedRenderer`.
 
+## Space pipes carry items, not fluid
+
+A space pipe is not a fluid network stretched across space. It carries `FluidPackageItem`s
+— fluid packaged into belt items — on ordinary item lanes, as an `IItemBundleSimulation`.
+So a pipe's throughput is packages per minute times the package size, and code written
+against item lanes covers pipes for free.
+
+The port that fills one is where it gets awkward. `SpaceFluidPortSenderSimulation` is an
+`IFluidSimulation` that consumes from a tank and packages straight into a buffer — there is
+no lane to hook and no per-transfer event on `IFluidReceiver`. What it does have is a
+single call per package:
+
+```csharp
+DetourHelper.CreatePostfixHook<FluidPackageLaunchSimulation, Ticks, FluidPackageData, Ticks>(
+    (launch, duration, package, excess) => launch.CreateNewLaunch(duration, package, excess),
+    (launch, duration, package, excess) => Count(launch));
+```
+
+A port exposes its `LaunchSimulation`, so you can map instances back to whatever record you
+keep. Its ceiling is one package per `LaunchDuration_T`, and its backlog is the tank's
+`Level`.
+
+Fluid crossing between two directly docked platforms has no such event — it flows as a
+connected network, so there is nothing discrete to count. Sampling container levels cannot
+recover it either, because a container that is passing fluid through at a steady rate holds
+a steady level.
+
 ## Gotchas
 
 - **`Fluid` is null on an empty container.** Comparing `container.Fluid == someFluid`
@@ -143,4 +170,9 @@ fluid equivalent of a backed-up belt port, and the game renders it with
 - Fluid networks are graph objects rebuilt on edits — resolve them fresh rather than
   holding references.
 - `IFluid : IItem`, so fluids and shapes share the item hierarchy but not the transport
-  model. Code written against lanes does not transfer to fluids.
+  model. Code written against lanes does not transfer to fluids — **except** for space
+  pipes, which package fluid into items and are transported exactly like belts.
+- `IFluidReceiver.Give` and `IFluidProvider.Take` have no hook equivalent. To observe
+  fluid movement you either sample levels or find a discrete event, such as the package
+  launch above. `IFluidProvider.Next` is settable, but inserting your own proxy into a
+  live network risks breaking the player's factory - not worth it for an observer.

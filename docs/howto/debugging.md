@@ -130,6 +130,19 @@ That means references are not resolving — usually `SPZ2_PATH` is unset or wron
 
 - **Rebuild installs.** `OutputPath` points at the mod folder, so a build *is* an
   install. There is no hot reload — restart the game.
+- **Compile-check without closing the game.** While the game is running, the DLL is
+  memory-mapped and the copy into the mod folder fails with
+  `MSB3021 ... user-mapped section open` — the *compile* succeeded, only the install
+  failed. Redirect the output to check your code without quitting:
+
+  ```
+  dotnet build MyMod.csproj -p:OutputPath=/tmp/verify/
+  ```
+
+  Only the final deploy needs the game closed.
+- **Expose tunables as console commands.** Anything you would otherwise change by
+  rebuilding — colours, sizes, thresholds — becomes a typed number instead of a restart.
+  See [add a console command](console-command.md).
 - **Keep a small test save.** Loading a 10,000-building megabase to test a two-line
   change costs more than the change.
 - **Log state transitions, not frames.** "overlay enabled", "map loaded, 42 islands" —
