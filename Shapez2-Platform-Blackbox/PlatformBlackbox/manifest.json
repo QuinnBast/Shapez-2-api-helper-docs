@@ -1,0 +1,26 @@
+{
+  "Version": "0.1.0",
+  "Title": "Platform Blackbox",
+  "Description": "Collapse a selection of platforms into a reusable blueprint, and see what crosses its boundary",
+  "Author": "Quinn Bast",
+  "SavedModVersionCompabilityRangeWithSelf": "*-*",
+  "GameVersionSupportRange": "*-*",
+  "AffectsSaveGames": false,
+  "DisablesAchievements": false,
+  "Conflicts": [],
+  "Assemblies": [
+    "PlatformBlackbox.dll"
+  ],
+  "Dependencies": [
+    {
+      "ModId": "steam:3542611357",
+      "ModTitle": "Shapez Shifter",
+      "Version": "*-*"
+    },
+    {
+      "ModId": "steam:3542712030",
+      "ModTitle": "MonoMod.RuntimeDetour",
+      "Version": "*-*"
+    }
+  ]
+}
