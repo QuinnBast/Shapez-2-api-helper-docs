@@ -1,0 +1,294 @@
+# Simulations and Item Lanes
+
+> **You need this when** you want to know what a machine is *doing* — running, starved,
+> or backed up. Task-shaped version:
+> [Read machine state](howto/read-machine-state.md).
+
+
+A `BuildingModel` says a machine *exists*. A **simulation** is the object that makes it
+*do* something. If you want to know what is on a belt, whether a cutter is running, or
+why a factory is stalled, this is the layer you need.
+
+## Finding a simulation
+
+`IMapModel.Simulator` is an `ISimulator`:
+
+```csharp
+public interface ISimulator : ISimulationTimeProvider
+{
+    IEnumerable<ILocalizedSimulation> Simulations { get; }
+    IEvent<ILocalizedSimulation> OnSimulationCreated { get; }
+    IEvent<ILocalizedSimulation> OnBeforeSimulationDestroyed { get; }
+
+    ILocalizedTileSimulation FindTileSimulation(in GlobalTileCoordinate position);
+    bool TryFindTileSimulation(in GlobalTileCoordinate position, out ILocalizedTileSimulation simulation);
+    bool TryFindChunkSimulation(in GlobalChunkCoordinate position, out ILocalizedChunkSimulation simulation);
+
+    void FindAllConnectedSimulations(ILocalizedSimulation simulation, ICollection<ILocalizedSimulation> targetResults);
+    bool TryGetConnectedSimulation(ILocalizedSimulation simulation, int index, out ILocalizedSimulation inputSimulation);
+
+    TSystem GetSystem<TSystem>() where TSystem : ISimulationSystem;
+    bool TryGetSystem<TSystem>(out TSystem system) where TSystem : ISimulationSystem;
+    IEnumerable<TSystem> GetSystems<TSystem>() where TSystem : ISimulationSystem;
+
+    Ticks GetSimulationTimeFor(ILocalizedSimulation simulation);
+    Ticks GetSimulationUpdateDeltaTimeFor(ILocalizedSimulation simulation);
+}
+```
+
+Two ways in, and they suit different jobs:
+
+```csharp
+// From a building you already have:
+if (map.Simulator.TryFindTileSimulation(building.Tile_G, out ILocalizedTileSimulation localized))
+{
+    ISimulation simulation = localized.Simulation;
+}
+
+// Or sweep everything (belts included — this is a big list):
+foreach (ILocalizedSimulation localized in map.Simulator.Simulations) { }
+```
+
+`FindAllConnectedSimulations` walks the graph outward from one simulation, which is the
+starting point for anything that needs to follow a production chain upstream or
+downstream.
+
+### `ILocalizedSimulation`
+
+The wrapper that says *where* a simulation is:
+
+```csharp
+public interface ILocalizedSimulation
+{
+    ISimulation Simulation { get; }
+    int NumOccupiedChunks { get; }
+    GlobalChunkCoordinate GetOccupiedChunk(int index);
+}
+
+public interface ILocalizedTileSimulation : ILocalizedSimulation
+{
+    GlobalTileBounds TileBounds { get; }
+    int NumOccupiedTiles { get; }
+    GlobalTileCoordinate GetOccupiedTile(int index);
+}
+
+public interface ILocalizedChunkSimulation : ILocalizedSimulation
+{
+    GlobalChunkBounds ChunkBounds { get; }
+}
+```
+
+Buildings are tile simulations; island-level things (space research stations, trains)
+are chunk simulations.
+
+## `IItemSimulation` — the generic machine
+
+Most machines implement `IItemSimulation`, and this is the key to writing code that
+works across *all* buildings without knowing their concrete types:
+
+```csharp
+public interface IItemSimulation : ISimulation
+{
+    int NumItemReceivers { get; }
+    int NumItemProviders { get; }
+    IItemReceiver GetItemReceiver(int index);   // its inputs
+    IItemProvider GetItemProvider(int index);   // its outputs
+    void TraverseLanes<TTraverser>(TTraverser traverser) where TTraverser : IItemLaneTraverser;
+}
+```
+
+`TraverseLanes` visits every internal lane, including ones that are neither input nor
+output:
+
+```csharp
+public struct LaneCounter : IItemLaneTraverser
+{
+    public int Occupied;
+    public void Traverse(IItemLane lane)
+    {
+        if (lane.HasItem) Occupied++;
+    }
+}
+
+LaneCounter counter = new LaneCounter();
+itemSimulation.TraverseLanes(counter);
+```
+
+> [!NOTE]
+> `TraverseLanes` is generic over a `struct` traverser specifically to avoid allocating
+> and to let the JIT inline the callback. Passing a class works but gives up both.
+
+## The lane model
+
+Items live on lanes. Three interfaces, layered:
+
+```csharp
+public interface IItemReceiver
+{
+    Steps MaxStep_S { get; }
+    Steps FreeStepsAtTheBeginning { get; }
+    bool CanAcceptItem(IBeltItem itemToTransfer);
+    void HandOverItem(IBeltItem itemToTransfer, Ticks remainingTicks);
+}
+
+public interface IItemProvider
+{
+    IItemReceiver NextLane { get; set; }
+    Steps FreeStepsAtTheEnd { get; }
+}
+
+public interface IItemLane : IItemReceiver, IItemProvider
+{
+    int ItemCount { get; }
+    bool HasItem { get; }
+    IBeltItem GetItem(int index);
+    void Clear();
+}
+```
+
+The important structural fact: **lanes are chained through `NextLane`**. A lane hands
+its item to the next receiver when it reaches the end, and the whole factory is that
+chain repeated. `CanAcceptItem` returning `false` is what backs a line up.
+
+`SingleItemLane` is the common base (one item at a time) and adds:
+
+```csharp
+public abstract IBeltItem Item { get; protected set; }
+public bool IsEmpty => Item == null;
+public bool HasItem => Item != null;
+public abstract float Progress { get; }      // 0..1 along the lane
+public abstract Ticks Duration_T { get; }
+```
+
+`BeltLane` is the concrete workhorse, adding `Speed` (an `IBeltSpeed`), `Progress_S` in
+steps, and conversions `S_From_T` / `T_From_S`. `DelayBeltLane` is the "processing"
+variant — it holds an item for a fixed duration, which is how a machine's work time is
+modelled.
+
+### A machine, end to end
+
+`HalfCutterSimulation` is representative of nearly every processing building:
+
+```csharp
+public class HalfCutterSimulation : Simulation<HalfCutterSimulationState>, IItemSimulation
+{
+    public readonly BeltLane      InputLane;
+    public readonly DelayBeltLane ProcessingLane;
+    public readonly BeltLane      OutputLane;
+
+    public HalfCutterSimulation(HalfCutterSimulationState state, ICutterConfiguration config, …)
+        : base(state)
+    {
+        // Built back to front, each lane pointing at the next:
+        OutputLane     = new BeltLane(config.BeltSpeed, state.OutputLaneState);
+        ProcessingLane = new DelayBeltLane(config.ProcessingDelay, state.ProcessingLaneState, OutputLane);
+        InputLane      = new BeltLane(config.BeltSpeed, state.InputLaneState, ProcessingLane);
+
+        // The actual work happens in a hook as the item is accepted:
+        ProcessingLane.AcceptHook = delegate(IItemReceiver _, ref IBeltItem item, ref Ticks _)
+        {
+            // …transform `item` in place
+        };
+    }
+}
+```
+
+Three things to take from that:
+
+1. **Lanes are constructed back to front**, each taking the next as its receiver.
+2. **The state object holds the lane states**, not the lanes — the lanes are rebuilt on
+   load around the deserialized state. That is why `SimulationStateContainer` holds
+   `…SimulationState`, not the simulation.
+3. **Work happens in `AcceptHook`**, at the moment an item transfers, not in an update
+   loop.
+
+## Lane hooks
+
+`SingleItemLane` implements `IHookableItemReceiver` and exposes four hook points:
+
+```csharp
+public PreAcceptHookDelegate   PreAcceptHook   { get; set; }
+public AcceptHookDelegate      AcceptHook      { get; set; }
+public PostAcceptHookDelegate  PostAcceptHook  { get; set; }
+public PostHandoverHookDelegate PostHandoverHook { get; set; }
+```
+
+These are the game's own extension mechanism, and you can borrow them — but always
+**chain, never replace**:
+
+```csharp
+AcceptHookDelegate saved = lane.AcceptHook;
+
+lane.AcceptHook = delegate(IItemReceiver receiver, ref IBeltItem item, ref Ticks remaining_T)
+{
+    // …your observation here
+    saved?.Invoke(receiver, ref item, ref remaining_T);
+};
+
+// on dispose:
+lane.AcceptHook = saved;
+```
+
+Overwriting without chaining silently breaks whatever the machine was doing in its own
+hook — for the cutter above, it would stop cutting.
+
+## Worked example: is this machine running?
+
+The vanilla side panel measures true throughput by timestamping every item that arrives
+on the output lane over a 60-second window, then comparing the average interval against
+the building's theoretical processing duration
+(`HUDSidePanelModuleBuildingEfficiency`). It is accurate, and it costs one hook per
+observed lane — fine for one selected building, expensive for ten thousand.
+
+For a cheap classification across many buildings, read the chain state instead. No
+hooks, no warm-up, two property reads:
+
+```csharp
+public enum MachineStatus { Unknown, Starved, Blocked, Running }
+
+private static MachineStatus Classify(IItemSimulation simulation)
+{
+    bool anyInputHasItem = false;
+    for (int i = 0; i < simulation.NumItemReceivers; i++)
+    {
+        if (simulation.GetItemReceiver(i) is IItemLane input && input.HasItem)
+        {
+            anyInputHasItem = true;
+            break;
+        }
+    }
+
+    for (int i = 0; i < simulation.NumItemProviders; i++)
+    {
+        if (simulation.GetItemProvider(i) is not IItemLane output) continue;
+        if (!output.HasItem) continue;
+
+        // An item sitting on the output whose next lane will not take it: backed up.
+        IBeltItem item = output.GetItem(0);
+        if (output.NextLane != null && !output.NextLane.CanAcceptItem(item))
+        {
+            return MachineStatus.Blocked;
+        }
+    }
+
+    if (!anyInputHasItem) return MachineStatus.Starved;
+    return MachineStatus.Running;
+}
+```
+
+`Blocked` means the problem is *downstream*; `Starved` means it is *upstream*. That
+distinction is usually more actionable to a player than a percentage.
+
+> [!NOTE]
+> This classification is a design recommendation derived from the lane contracts, not a
+> vanilla mechanism. A single sample is instantaneous and noisy — sample a few times a
+> second and keep a rolling ratio before showing anything to a player.
+
+## Simulation systems
+
+Simulations are updated by **systems** (`ISimulationSystem`), reachable via
+`ISimulator.GetSystem<T>()` / `GetSystems<T>()`. Adding a new machine type means adding
+a system that pattern-matches your building and creates your simulation — the
+`DiagonalCutter` sample does exactly this, and ShapezShifter's Flow layer wires it up
+for you when you use `Building.Create(...)`. Reading existing machines, as above,
+requires no system of your own.

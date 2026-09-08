@@ -1,0 +1,36 @@
+apiRules:
+  # Keep the documented surface to shapez 2 + ShapezShifter.
+  # Engine, runtime, and third-party types are excluded: modders look those up
+  # in their own upstream docs, and including them inflates the generated
+  # metadata by roughly an order of magnitude (inherited-member reference
+  # blocks are ~97% of each file).
+  - exclude:
+      uidRegex: ^UnityEngine
+  - exclude:
+      uidRegex: ^Unity\.
+  - exclude:
+      uidRegex: ^TMPro
+  - exclude:
+      uidRegex: ^DG\.
+  - exclude:
+      uidRegex: ^System
+  - exclude:
+      uidRegex: ^Microsoft
+  - exclude:
+      uidRegex: ^MonoMod
+  - exclude:
+      uidRegex: ^Mono\.
+  - exclude:
+      uidRegex: ^Newtonsoft
+  - exclude:
+      uidRegex: ^Assimp
+  - exclude:
+      uidRegex: ^JetBrains
+  - exclude:
+      uidRegex: ^GameAnalytics
+  - exclude:
+      uidRegex: ^Steamworks
+  - exclude:
+      uidRegex: ^Cysharp
+  - exclude:
+      uidRegex: ^UniTask

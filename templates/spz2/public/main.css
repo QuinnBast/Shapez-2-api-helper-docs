@@ -1,0 +1,343 @@
+/* ============================================================================
+   shapez 2 Modding Docs - custom theme
+   Loaded after docfx.min.css. DocFX "modern" DOM is:
+       main.container-xxl > div.content > article
+   Admonitions render as bare div.NOTE / div.WARNING / div.TIP
+   Tables render as bare <table> with no class at all.
+   ========================================================================= */
+
+:root {
+  --spz-accent: #1b9dd9;
+  --spz-accent-hi: #157fb0;
+  --spz-accent-soft: rgba(27, 157, 217, 0.09);
+  --spz-accent-line: rgba(27, 157, 217, 0.22);
+  --spz-warm: #e07b1a;
+  --spz-warm-soft: rgba(224, 123, 26, 0.09);
+  --spz-green: #2f9e5b;
+  --spz-green-soft: rgba(47, 158, 91, 0.09);
+
+  --spz-ink: #18222e;
+  --spz-muted: #5c6d80;
+  --spz-surface: #f5f8fa;
+  --spz-surface-2: #eaf0f5;
+  --spz-border: #d6dfe8;
+  --spz-code-bg: #f7f9fb;
+
+  --spz-mono: ui-monospace, "Cascadia Mono", "SF Mono", "JetBrains Mono",
+              Menlo, Consolas, monospace;
+}
+
+[data-bs-theme="dark"] {
+  --spz-accent: #4fbdf0;
+  --spz-accent-hi: #86d3f6;
+  --spz-accent-soft: rgba(79, 189, 240, 0.11);
+  --spz-accent-line: rgba(79, 189, 240, 0.26);
+  --spz-warm: #f2a75c;
+  --spz-warm-soft: rgba(242, 167, 92, 0.11);
+  --spz-green: #57c07f;
+  --spz-green-soft: rgba(87, 192, 127, 0.11);
+
+  --spz-ink: #dfe7f0;
+  --spz-muted: #94a5b8;
+  --spz-surface: #16202b;
+  --spz-surface-2: #1d2836;
+  --spz-border: #2b3745;
+  --spz-code-bg: #131c26;
+}
+
+/* ------------------------------------------------------------------ globals */
+
+body {
+  font-size: 16px;
+  line-height: 1.68;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  text-underline-offset: 0.15em;
+}
+
+::selection {
+  background: var(--spz-accent);
+  color: #fff;
+}
+
+/* ------------------------------------------------------------------- navbar */
+
+.navbar {
+  border-bottom: 1px solid var(--spz-border);
+  box-shadow: 0 1px 0 var(--spz-accent-line);
+}
+
+.navbar-brand {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* thin accent stripe across the very top of every page */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 2000;
+  background: linear-gradient(90deg, var(--spz-accent), var(--spz-warm));
+}
+
+/* --------------------------------------------------------------- typography */
+
+.content article {
+  max-width: 62rem;
+}
+
+.content article h1 {
+  font-weight: 700;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+  margin-bottom: 1.3rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 3px solid var(--spz-accent);
+  display: inline-block;
+}
+
+.content article h2 {
+  font-weight: 640;
+  letter-spacing: -0.012em;
+  line-height: 1.3;
+  margin-top: 2.7rem;
+  margin-bottom: 0.95rem;
+  padding-left: 0.75rem;
+  border-left: 4px solid var(--spz-accent);
+}
+
+.content article h3 {
+  font-weight: 620;
+  margin-top: 2rem;
+  margin-bottom: 0.65rem;
+}
+
+.content article h4 {
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--spz-muted);
+  margin-top: 1.7rem;
+}
+
+.content article strong {
+  font-weight: 650;
+}
+
+.content article > p:first-of-type {
+  font-size: 1.06rem;
+}
+
+/* --------------------------------------------------------------------- code */
+
+code {
+  font-family: var(--spz-mono);
+  font-size: 0.875em;
+}
+
+.content article :not(pre) > code {
+  background: var(--spz-accent-soft);
+  color: var(--spz-accent-hi);
+  border: 1px solid var(--spz-accent-line);
+  border-radius: 4px;
+  padding: 0.1em 0.36em;
+}
+
+.content article pre {
+  background: var(--spz-code-bg);
+  border: 1px solid var(--spz-border);
+  border-left: 3px solid var(--spz-accent);
+  border-radius: 8px;
+  padding: 1rem 1.15rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.62;
+  margin: 1.3rem 0;
+}
+
+.content article pre > code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+}
+
+/* ------------------------------------------------------------------- tables */
+/* DocFX emits a bare <table>, so all of this is ours to define. */
+
+.content article table {
+  width: 100%;
+  margin: 1.5rem 0;
+  font-size: 0.94rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--spz-border);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.content article table thead th {
+  background: var(--spz-surface-2);
+  color: var(--spz-muted);
+  font-weight: 700;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--spz-border);
+}
+
+.content article table td {
+  padding: 0.65rem 0.9rem;
+  vertical-align: top;
+  border-top: 1px solid var(--spz-border);
+}
+
+.content article table tbody tr:first-child td {
+  border-top: none;
+}
+
+.content article table tbody tr:nth-child(even) {
+  background: var(--spz-surface);
+}
+
+.content article table tbody tr:hover {
+  background: var(--spz-accent-soft);
+}
+
+.content article table td:first-child {
+  font-weight: 550;
+}
+
+/* ------------------------------------------------------ admonitions and ledes */
+
+.content article .NOTE,
+.content article .TIP,
+.content article .IMPORTANT,
+.content article .WARNING,
+.content article .CAUTION,
+.content article blockquote {
+  border: 1px solid var(--spz-border);
+  border-left: 4px solid var(--spz-muted);
+  border-radius: 8px;
+  background: var(--spz-surface);
+  padding: 0.9rem 1.15rem;
+  margin: 1.5rem 0;
+}
+
+.content article .NOTE > p:last-child,
+.content article .TIP > p:last-child,
+.content article .IMPORTANT > p:last-child,
+.content article .WARNING > p:last-child,
+.content article .CAUTION > p:last-child,
+.content article blockquote > p:last-child {
+  margin-bottom: 0;
+}
+
+.content article .NOTE,
+.content article .IMPORTANT {
+  border-left-color: var(--spz-accent);
+  background: var(--spz-accent-soft);
+}
+
+.content article .WARNING,
+.content article .CAUTION {
+  border-left-color: var(--spz-warm);
+  background: var(--spz-warm-soft);
+}
+
+.content article .TIP {
+  border-left-color: var(--spz-green);
+  background: var(--spz-green-soft);
+}
+
+.content article .NOTE h5,
+.content article .TIP h5,
+.content article .IMPORTANT h5,
+.content article .WARNING h5,
+.content article .CAUTION h5 {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.45rem;
+  color: var(--spz-muted);
+}
+
+/* a plain blockquote is the "You need this when" lede at the top of a page */
+.content article blockquote {
+  border-left-color: var(--spz-warm);
+  background: var(--spz-warm-soft);
+  font-size: 0.97rem;
+}
+
+/* ----------------------------------------------------------- side nav / toc */
+
+.toc .nav-link {
+  font-size: 0.9rem;
+  padding-top: 0.22rem;
+  padding-bottom: 0.22rem;
+  line-height: 1.45;
+}
+
+.toc .nav-link.active {
+  color: var(--spz-accent) !important;
+  font-weight: 660;
+}
+
+.toc .nav-link:hover {
+  color: var(--spz-accent-hi) !important;
+}
+
+/* group headers with no link ("Reference") read as section labels */
+.toc .nav > li > span.nav-link,
+.toc .nav-link:not([href]) {
+  text-transform: uppercase;
+  font-size: 0.71rem;
+  letter-spacing: 0.09em;
+  font-weight: 800;
+  color: var(--spz-muted);
+  margin-top: 0.9rem;
+}
+
+/* right-hand "In this article" rail */
+#affix .nav-link.active {
+  color: var(--spz-accent) !important;
+}
+
+/* ------------------------------------------------------------ API reference */
+
+.content article .inheritance .level,
+.content article dl.typeList dd {
+  font-family: var(--spz-mono);
+  font-size: 0.84rem;
+  color: var(--spz-muted);
+}
+
+.content article h4.section {
+  border-bottom: 1px solid var(--spz-border);
+}
+
+/* ------------------------------------------------------------------- mobile */
+
+@media (max-width: 768px) {
+  body {
+    font-size: 15px;
+  }
+
+  .content article pre {
+    font-size: 0.8rem;
+  }
+
+  .content article table {
+    font-size: 0.86rem;
+  }
+}

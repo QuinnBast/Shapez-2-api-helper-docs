@@ -1,0 +1,46 @@
+{
+  "build": {
+    "content": [
+      {
+        "files": [
+          "api/**.yml",
+          "api/index.md"
+        ]
+      },
+      {
+        "files": [
+          "docs/**.md",
+          "docs/**/toc.yml",
+          "toc.yml",
+          "*.md"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [
+          "images/**"
+        ]
+      }
+    ],
+    "output": "_site",
+    "template": [
+      "default",
+      "modern",
+      "templates/spz2"
+    ],
+    "globalMetadata": {
+      "_appName": "shapez 2 Modding",
+      "_appTitle": "shapez 2 Modding Docs",
+      "_enableSearch": true,
+      "pdf": false,
+      "_appFooter": "Community docs for shapez 2 modding \u2014 not affiliated with tobspr Games.",
+      "_disableContribution": true
+    },
+    "postProcessors": [
+      "ExtractSearchIndex"
+    ],
+    "keepFileLink": false,
+    "disableGitFeatures": true
+  }
+}

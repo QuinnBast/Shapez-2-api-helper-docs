@@ -1,0 +1,27 @@
+# Built site
+_site/
+
+# Generated API metadata (produced from the game assemblies, which cannot be
+# redistributed). Regenerate with scripts/refresh-api-metadata.sh.
+api/*.yml
+api/.manifest
+api-metadata.tar.gz
+
+# Machine-specific DocFX config, written by scripts/write-local-config.sh
+docfx.metadata.local.json
+
+# Local full-build config with absolute paths (docfx.metadata.json + docfx.ci.json
+# are the committed, machine-independent pair)
+docfx.json
+docfx.local.json
+
+# DocFX + .NET scratch
+obj/
+bin/
+log.json
+
+# Editor
+.idea/
+.vs/
+*.user
+.DS_Store

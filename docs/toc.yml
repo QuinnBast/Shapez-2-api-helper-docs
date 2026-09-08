@@ -1,0 +1,98 @@
+- name: Start Here
+  href: index.md
+- name: Getting Started
+  href: getting-started.md
+
+- name: How do I…
+  href: howto/index.md
+  items:
+    - name: "— Adding content"
+    - name: Add a building
+      href: howto/add-a-building.md
+    - name: Add an island or platform
+      href: howto/add-an-island.md
+    - name: Add to the toolbar
+      href: howto/add-to-toolbar.md
+    - name: Add a research unlock
+      href: howto/add-research-unlock.md
+    - name: Add translations
+      href: howto/add-translations.md
+    - name: Load models and icons
+      href: howto/load-models-and-icons.md
+    - name: Add sounds
+      href: howto/add-sounds.md
+    - name: Speed upgrades and buffs
+      href: howto/speed-upgrades-and-buffs.md
+    - name: Placement previews
+      href: howto/placement-predictions.md
+    - name: Add a simulation system
+      href: howto/add-simulation-system.md
+    - name: Custom scenarios
+      href: howto/custom-scenarios.md
+
+    - name: "— Reading a running game"
+    - name: Run code when a game loads
+      href: howto/run-code-when-game-loads.md
+    - name: Find buildings
+      href: howto/find-buildings.md
+    - name: React to the player's selection
+      href: howto/react-to-selection.md
+    - name: Read machine state
+      href: howto/read-machine-state.md
+    - name: Read research progress
+      href: howto/read-research-progress.md
+    - name: Read production statistics
+      href: howto/read-statistics.md
+
+    - name: "— Game systems"
+    - name: Work with shapes
+      href: howto/work-with-shapes.md
+    - name: Work with fluids
+      href: howto/work-with-fluids.md
+    - name: Work with signals and wires
+      href: howto/work-with-signals.md
+    - name: Work with trains
+      href: howto/work-with-trains.md
+    - name: Work with blueprints
+      href: howto/work-with-blueprints.md
+
+    - name: "— Showing things to the player"
+    - name: Draw in the world
+      href: howto/draw-in-world.md
+    - name: Notifications and HUD screens
+      href: howto/notifications-and-hud-screens.md
+    - name: Building side panel
+      href: howto/building-side-panel.md
+
+    - name: "— Tooling and shipping"
+    - name: Bind a key
+      href: howto/keybind-toggle.md
+    - name: Add a console command
+      href: howto/console-command.md
+    - name: Store data in the save
+      href: howto/save-data.md
+    - name: Debug a mod
+      href: howto/debugging.md
+    - name: Publish to the Steam Workshop
+      href: howto/publish-to-workshop.md
+
+- name: Reference
+  items:
+    - name: Architecture
+      href: architecture.md
+    - name: Mod Lifecycle
+      href: mod-lifecycle.md
+    - name: The Map Model
+      href: map-model.md
+    - name: Coordinate Systems
+      href: coordinates.md
+    - name: Simulations and Item Lanes
+      href: simulations-and-lanes.md
+    - name: Rendering
+      href: rendering.md
+    - name: Hooking the Game
+      href: hooking.md
+    - name: The Publicizer
+      href: publicizer.md
+    - name: Exploring the Assemblies
+      href: exploring-assemblies.md

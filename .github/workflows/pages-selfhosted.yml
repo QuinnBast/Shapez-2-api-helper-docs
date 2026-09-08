@@ -1,0 +1,81 @@
+name: Publish docs (self-hosted, full build)
+
+# Generates the API metadata from a local shapez 2 install and publishes the
+# whole site — no committed bundle, no release asset. Requires a self-hosted
+# runner on a machine that owns the game, with SPZ2_PATH and SPZ2_SHIFTER set.
+#
+# To make this the primary pipeline:
+#   1. Register a self-hosted runner (repo Settings -> Actions -> Runners) with
+#      the label `shapez2`.
+#   2. Change the `on:` block below to `push: branches: [main]`.
+#   3. Disable .github/workflows/pages.yml so the two do not race for Pages.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: [self-hosted, shapez2]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify the game install is reachable
+        shell: bash
+        run: |
+          : "${SPZ2_PATH:?SPZ2_PATH is not set on this runner}"
+          test -d "$SPZ2_PATH" || { echo "SPZ2_PATH does not exist: $SPZ2_PATH"; exit 1; }
+          test -f "$SPZ2_PATH/SPZGameAssembly.dll" || { echo "SPZGameAssembly.dll not found in $SPZ2_PATH"; exit 1; }
+          : "${SPZ2_SHIFTER:?SPZ2_SHIFTER is not set on this runner}"
+          test -f "$SPZ2_SHIFTER" || { echo "ShapezShifter.dll not found: $SPZ2_SHIFTER"; exit 1; }
+          echo "Game assemblies OK"
+
+      - name: Install DocFX
+        shell: bash
+        run: |
+          dotnet tool install -g docfx --version 2.78.5 || dotnet tool update -g docfx --version 2.78.5
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      # Substitutes this runner's SPZ2_PATH / SPZ2_SHIFTER into the committed
+      # docfx.metadata.json template.
+      - name: Point DocFX at this machine's game install
+        shell: bash
+        run: bash scripts/write-local-config.sh
+
+      - name: Generate API metadata
+        shell: bash
+        run: docfx metadata docfx.metadata.local.json
+
+      - name: Build site
+        shell: bash
+        run: docfx build docfx.ci.json --warningsAsErrors
+
+      - name: Check output
+        shell: bash
+        run: |
+          test -f _site/index.html
+          test -f _site/docs/index.html
+          test -f _site/api/index.html
+          echo "Built $(find _site -name '*.html' | wc -l) pages"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

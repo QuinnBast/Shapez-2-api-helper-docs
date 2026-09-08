@@ -1,0 +1,50 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "files": [
+            "SPZGameAssembly.dll",
+            "Game.Content.dll",
+            "Game.Content.Features.dll",
+            "Game.Content.Rendering.dll",
+            "Game.Core.dll",
+            "Game.Core.Coordinates.dll",
+            "Game.Core.HUD.dll",
+            "Game.Core.Map.dll",
+            "Game.Core.Map.Model.dll",
+            "Game.Core.Map.Simulation.dll",
+            "Game.Core.Map.Layout.dll",
+            "Game.Core.Map.Layout.Model.dll",
+            "Game.Core.Modding.dll",
+            "Game.Core.Rendering.dll",
+            "Game.Core.Simulation.dll",
+            "Game.Core.Serialization.dll",
+            "Game.Hud.dll",
+            "Game.Interaction.dll",
+            "Game.Logic.dll",
+            "Game.Modding.dll",
+            "Game.Orchestration.dll",
+            "Core.dll",
+            "Core.Localization.dll"
+          ],
+          "src": "__SPZ2_PATH__"
+        },
+        {
+          "files": [
+            "ShapezShifter.dll"
+          ],
+          "src": "__SPZ2_SHIFTER_DIR__"
+        }
+      ],
+      "dest": "api",
+      "references": [
+        "__SPZ2_PATH__/*.dll"
+      ],
+      "globalNamespaceId": "Root",
+      "allowCompilationErrors": true,
+      "disableGitFeatures": true,
+      "filter": "filterConfig.yml"
+    }
+  ]
+}

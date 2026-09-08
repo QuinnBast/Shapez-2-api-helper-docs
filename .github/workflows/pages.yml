@@ -1,0 +1,83 @@
+name: Publish docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two Pages deploys at once; a queued push supersedes an in-flight one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  # Rolling release holding the generated API metadata bundle.
+  # Refresh with scripts/refresh-api-metadata.sh when the game updates.
+  API_METADATA_TAG: api-metadata
+  API_METADATA_FILE: api-metadata.tar.gz
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install DocFX
+        run: |
+          dotnet tool install -g docfx --version 2.78.5
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      # The API reference is generated from the shipped game assemblies, which
+      # cannot be redistributed and are not on the runner. The generated
+      # metadata is produced locally and published as a release asset, then
+      # downloaded here — so nothing large ever enters git history.
+      - name: Download API metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! gh release download "$API_METADATA_TAG" \
+                 --pattern "$API_METADATA_FILE" \
+                 --repo "$GITHUB_REPOSITORY"; then
+            echo "::error::Could not download '$API_METADATA_FILE' from release '$API_METADATA_TAG'."
+            echo "::error::Generate it locally with scripts/refresh-api-metadata.sh, then upload it:"
+            echo "::error::  gh release create $API_METADATA_TAG $API_METADATA_FILE --title 'API metadata' --notes 'Generated DocFX metadata'"
+            echo "::error::Subsequent refreshes: gh release upload $API_METADATA_TAG $API_METADATA_FILE --clobber"
+            exit 1
+          fi
+          tar -xzf "$API_METADATA_FILE"
+          echo "Restored $(ls api/*.yml | wc -l) API metadata files"
+
+      # docfx.ci.json is docfx.json without the `metadata` section, so this step
+      # can never try to read game assemblies that are not present.
+      - name: Build site
+        run: docfx build docfx.ci.json --warningsAsErrors
+
+      - name: Check output
+        run: |
+          test -f _site/index.html
+          test -f _site/docs/index.html
+          test -f _site/api/index.html
+          echo "Built $(find _site -name '*.html' | wc -l) pages"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

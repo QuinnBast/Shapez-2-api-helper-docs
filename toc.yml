@@ -1,0 +1,4 @@
+- name: Guide
+  href: docs/
+- name: API Reference
+  href: api/
