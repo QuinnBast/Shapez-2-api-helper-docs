@@ -20,6 +20,7 @@ In the debug console (**F1**):
 | `mrl.run <command>` | run another command, print it, and copy its output to the clipboard |
 | `mrl.copy` | put the last captured output on the clipboard again |
 | `mrl.paste` | run whatever is on the clipboard as a console command |
+| `mrl.seed` | install any staged build that has no installed copy yet |
 
 The clipboard commands exist because the in-game console cannot be selected from, so
 anything worth reading is trapped there. `mrl.run peo.types` runs that command and leaves
@@ -57,6 +58,18 @@ mrl.reload mymod            # in game
 `Directory.Build.props.template` in this repo is the same thing as a drop-in file: rename it
 to `Directory.Build.props` beside your solution and MSBuild imports it automatically, with
 no csproj edit at all.
+
+## The first build of a new mod
+
+A staged build with no installed copy beside it is invisible: the game never discovers it,
+so there is nothing for `mrl.reload` to replace. Mod Reloader copies such a build into the
+mods folder at startup, and `mrl.seed` does the same on demand.
+
+The copy cannot take effect in the session that makes it - discovery runs before any mod's
+code, this one included - so it loads on the next launch. That is the point of copying
+rather than loading the assembly directly: the game then treats it as an ordinary installed
+mod, applies the usual manifest, game-version and dependency checks, and reports a failure
+in the mod list exactly as it would for anything else. From then on it reloads normally.
 
 The reload report names the source it used and how old the staged build is, because
 reloading stale bytes looks exactly like a reload that did nothing. Reloading straight from

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using ShapezShifter.Hijack;
 using UnityEngine;
@@ -19,15 +19,17 @@ public class ReloaderCommands : IConsoleRewirer
     private readonly ILogger Logger;
     private readonly ModRegistry Registry;
     private readonly Reloader Reloader;
+    private readonly Seeder Seeder;
 
     /// The last output captured by mrl.run, so mrl.copy can put it back on the clipboard.
     private string LastCaptured = string.Empty;
 
-    public ReloaderCommands(ILogger logger, ModRegistry registry, Reloader reloader)
+    public ReloaderCommands(ILogger logger, ModRegistry registry, Reloader reloader, Seeder seeder)
     {
         Logger = logger;
         Registry = registry;
         Reloader = reloader;
+        Seeder = seeder;
     }
 
     public void RegisterCommands(IDebugConsole console)
@@ -36,6 +38,9 @@ public class ReloaderCommands : IConsoleRewirer
 
         Register(console, "reload", new DebugConsole.StringOption("mod"),
             context => Emit(context, Reloader.Reload(context.GetString(0))));
+
+        // Runs at startup too; this is for when a staged build appears mid-session.
+        Register(console, "seed", null, context => Emit(context, Seeder.Seed()));
 
         // Run another command, print what it printed, and put it on the clipboard.
         Register(console, "run", new DebugConsole.StringOption("command"), context =>

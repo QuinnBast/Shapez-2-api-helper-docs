@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -186,7 +186,7 @@ public class Reloader
         }
 
         report.Add("  source: the installed folder - which the game has locked, so this will");
-        report.Add("          reload the same bytes. Use mrl.link, or build with -p:Dev=true.");
+        report.Add("          reload the same bytes. Build with -p:Dev=true to stage instead.");
         return installed;
     }
 

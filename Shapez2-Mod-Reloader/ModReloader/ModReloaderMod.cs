@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using JetBrains.Annotations;
 using MonoMod.RuntimeDetour;
 using ShapezShifter.Hijack;
@@ -34,8 +34,18 @@ public class ModReloaderMod : IMod
             (orchestrator, lookup) => orchestrator.InjectIslandsModuleProviders(lookup),
             OnSessionReady);
 
+        Seeder seeder = new Seeder(logger);
+
         CommandsHandle = GameRewirers.AddRewirer(
-            new ReloaderCommands(logger, Registry, new Reloader(logger, Registry)));
+            new ReloaderCommands(logger, Registry, new Reloader(logger, Registry), seeder));
+
+        // A staged build with nothing installed beside it is invisible to the game, so the
+        // first build of a new mod would otherwise have nothing to reload. Installing it
+        // here means the next launch loads it normally, checks included.
+        foreach (string line in seeder.Seed())
+        {
+            Logger.Info?.Log(line);
+        }
 
         Logger.Info?.Log("Mod Reloader ready - mrl.list, then mrl.reload <name> (F1).");
     }

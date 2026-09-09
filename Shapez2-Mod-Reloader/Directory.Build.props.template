@@ -13,11 +13,10 @@
 
     Mod Reloader prefers the staged build when it finds one:  mrl.reload <yourmod>
 
-    If you would rather not touch your build at all, skip this file and point the reloader
-    at your project's obj/Debug instead - a normal build writes the assembly there before it
-    tries to copy it into the mods folder, so those bytes are already fresh:
-
-        copy the obj/Debug path, then in game:  mrl.link <yourmod>
+    The first build of a brand new mod has nothing installed beside it to reload. Mod
+    Reloader copies a staged build into the mods folder at startup when there is no
+    installed copy, so the next launch loads it as an ordinary mod - manifest and dependency
+    checks included - and it is reloadable from then on.
 -->
 <Project>
 
