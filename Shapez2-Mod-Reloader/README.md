@@ -16,8 +16,6 @@ In the debug console (**F1**):
 | | |
 |---|---|
 | `mrl.list` | every loaded mod, with every name `mrl.reload` will accept |
-| `mrl.link <mod>` | point the reloader at that mod's build folder (path from the clipboard) |
-| `mrl.links` / `mrl.unlink <mod>` | show or remove those links |
 | `mrl.reload <name>` | dispose that mod and run its rebuilt assembly |
 | `mrl.run <command>` | run another command, print it, and copy its output to the clipboard |
 | `mrl.copy` | put the last captured output on the clipboard again |
@@ -31,25 +29,38 @@ its output on your clipboard. Everything these commands print is mirrored into
 The name matches loosely against the mod's title and folder, and refuses ambiguous matches
 so a typo cannot reload the wrong thing. The loop becomes:
 
-## The locked-file problem, and the fix
+## Setting up a mod for reloading
 
 The installed copy of a mod is memory-mapped the moment the game loads it, so a normal
-build cannot overwrite it while the game runs — which would leave nothing new to reload.
+build cannot overwrite it while the game runs - there would be nothing new to reload. So a
+mod being developed needs to build somewhere else: **`<persistent>/mods-dev/<ModName>/`**.
 
-So build with `-p:Dev=true`, which stages the output beside the mods folder instead of into
-it. Mod discovery only enumerates immediate subdirectories of `mods`, so a staged build is
-never loaded as a second mod, and `mrl.reload` prefers it when it is there:
+Mod discovery only enumerates immediate subdirectories of `mods`, so a staged build there
+is never loaded as a second mod, and `mrl.reload` prefers it when it finds one.
+
+The one-time setup, for any mod:
+
+```xml
+<PropertyGroup Condition="'$(Dev)' == 'true'">
+    <OutputPath>$(SPZ2_PERSISTENT)\mods-dev\$(MSBuildProjectName)\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+</PropertyGroup>
+```
+
+Then the loop is:
 
 ```
-dotnet build -p:Dev=true    # writes to <persistent>/mods-dev/<Mod>/
-mrl.reload efficiency       # in game, reads the staged build
+dotnet build -p:Dev=true    # the game can stay open; nothing locked is touched
+mrl.reload mymod            # in game
 ```
 
-The reload report says which source it used and how old the staged build is, because
-reloading stale bytes looks exactly like a reload that did nothing.
+`Directory.Build.props.template` in this repo is the same thing as a drop-in file: rename it
+to `Directory.Build.props` beside your solution and MSBuild imports it automatically, with
+no csproj edit at all.
 
-Without `-p:Dev=true` the build installs to `mods/` as usual, which is what you want for
-the copy that loads at startup.
+The reload report names the source it used and how old the staged build is, because
+reloading stale bytes looks exactly like a reload that did nothing. Reloading straight from
+the installed folder says so outright rather than appearing to work.
 
 ## Why the game cannot do this itself
 

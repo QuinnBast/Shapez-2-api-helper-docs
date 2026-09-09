@@ -29,17 +29,15 @@ public class Reloader
 {
     private readonly ILogger Logger;
     private readonly ModRegistry Registry;
-    private readonly SourceLinks Links;
 
     /// One shadow directory per session, cleared on the first reload.
     private readonly string ShadowRoot;
     private int Generation;
 
-    public Reloader(ILogger logger, ModRegistry registry, SourceLinks links)
+    public Reloader(ILogger logger, ModRegistry registry)
     {
         Logger = logger;
         Registry = registry;
-        Links = links;
         ShadowRoot = Path.Combine(Path.GetTempPath(), "spz2-mod-reloader");
     }
 
@@ -178,14 +176,6 @@ public class Reloader
         string installed = resolved.Descriptor.DirectoryPath;
         string folder = Path.GetFileName(
             installed.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
-
-        // A folder the modder pointed us at - typically their project's obj/Debug, which a
-        // normal build writes even when the copy into mods/ fails.
-        if (Links.TryGet(folder, out string linked) && Directory.Exists(linked))
-        {
-            report.Add("  source: " + linked + " (linked, built " + BuiltWhen(linked, resolved) + ")");
-            return linked;
-        }
 
         string staged = Path.Combine(GameEnvironment.DataPath, "mods-dev", folder);
 
