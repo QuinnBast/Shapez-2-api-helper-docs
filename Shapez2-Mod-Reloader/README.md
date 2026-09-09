@@ -29,10 +29,25 @@ its output on your clipboard. Everything these commands print is mirrored into
 The name matches loosely against the mod's title and folder, and refuses ambiguous matches
 so a typo cannot reload the wrong thing. The loop becomes:
 
+## The locked-file problem, and the fix
+
+The installed copy of a mod is memory-mapped the moment the game loads it, so a normal
+build cannot overwrite it while the game runs — which would leave nothing new to reload.
+
+So build with `-p:Dev=true`, which stages the output beside the mods folder instead of into
+it. Mod discovery only enumerates immediate subdirectories of `mods`, so a staged build is
+never loaded as a second mod, and `mrl.reload` prefers it when it is there:
+
 ```
-dotnet build          # in the mod you are working on
-mrl.reload efficiency # in game
+dotnet build -p:Dev=true    # writes to <persistent>/mods-dev/<Mod>/
+mrl.reload efficiency       # in game, reads the staged build
 ```
+
+The reload report says which source it used and how old the staged build is, because
+reloading stale bytes looks exactly like a reload that did nothing.
+
+Without `-p:Dev=true` the build installs to `mods/` as usual, which is what you want for
+the copy that loads at startup.
 
 ## Why the game cannot do this itself
 

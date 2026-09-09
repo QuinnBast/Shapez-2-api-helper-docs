@@ -15,6 +15,16 @@
         <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     </PropertyGroup>
 
+    <!--
+        dotnet build -p:Dev=true  stages the build beside the mods folder instead of
+        into it. The installed copy is memory-mapped by the running game and cannot be
+        overwritten; mod discovery only scans immediate subdirectories of "mods", so a
+        staged build is never loaded as a second mod. Mod Reloader reads it from there.
+    -->
+    <PropertyGroup Condition="'$(Dev)' == 'true'">
+        <OutputPath>$(SPZ2_PERSISTENT)\mods-dev\ModReloader\</OutputPath>
+    </PropertyGroup>
+
     <PropertyGroup>
     </PropertyGroup>
 

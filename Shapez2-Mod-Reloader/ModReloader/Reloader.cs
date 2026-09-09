@@ -59,8 +59,8 @@ public class Reloader
             return report;
         }
 
-        string directory = resolved.Descriptor.DirectoryPath;
         string[] assemblies = resolved.Metadata.Assemblies ?? Array.Empty<string>();
+        string directory = ResolveSource(resolved, report);
 
         if (assemblies.Length == 0)
         {
@@ -159,6 +159,65 @@ public class Reloader
 
         report.Add("Reloaded. Anything the old instance did not undo in Dispose now exists twice.");
         return report;
+    }
+
+    /// <summary>
+    /// Where to reload from.
+    ///
+    /// The copy in the mods folder is memory-mapped the moment the game loads it, so a
+    /// build can never overwrite it while the game runs - which would leave the reloader
+    /// with nothing new to read. The way out is to build somewhere else: a "mods-dev"
+    /// folder beside the mods folder, which mod discovery does not scan (it only
+    /// enumerates immediate subdirectories of "mods"), so a staged build is never loaded
+    /// as a second mod.
+    /// </summary>
+    private string ResolveSource(ResolvedMod resolved, List<string> report)
+    {
+        string installed = resolved.Descriptor.DirectoryPath;
+        string folder = Path.GetFileName(
+            installed.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+
+        string staged = Path.Combine(GameEnvironment.DataPath, "mods-dev", folder);
+
+        if (!Directory.Exists(staged))
+        {
+            report.Add("  source: the installed folder (build with -p:Dev=true to stage instead)");
+            return installed;
+        }
+
+        report.Add("  source: " + staged + " (staged " + BuiltWhen(staged, resolved) + ")");
+        return staged;
+    }
+
+    /// <summary>
+    /// When the staged build was produced, so a stale one is obvious rather than
+    /// mystifying - reloading old bytes looks exactly like a reload that did nothing.
+    /// </summary>
+    private static string BuiltWhen(string staged, ResolvedMod resolved)
+    {
+        try
+        {
+            string[] assemblies = resolved.Metadata.Assemblies ?? Array.Empty<string>();
+            if (assemblies.Length == 0)
+            {
+                return "unknown";
+            }
+
+            string file = Path.Combine(staged, assemblies[0]);
+            if (!File.Exists(file))
+            {
+                return "no assembly present";
+            }
+
+            TimeSpan age = DateTime.Now - File.GetLastWriteTime(file);
+            return age.TotalMinutes < 1
+                ? "seconds ago"
+                : (int)age.TotalMinutes + " minutes ago";
+        }
+        catch (Exception)
+        {
+            return "unknown";
+        }
     }
 
     private static IEnumerable<Type> LoadableTypes(Assembly assembly)
