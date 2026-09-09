@@ -29,15 +29,17 @@ public class Reloader
 {
     private readonly ILogger Logger;
     private readonly ModRegistry Registry;
+    private readonly SessionRewiring Rewiring;
 
     /// One shadow directory per session, cleared on the first reload.
     private readonly string ShadowRoot;
     private int Generation;
 
-    public Reloader(ILogger logger, ModRegistry registry)
+    public Reloader(ILogger logger, ModRegistry registry, SessionRewiring rewiring)
     {
         Logger = logger;
         Registry = registry;
+        Rewiring = rewiring;
         ShadowRoot = Path.Combine(Path.GetTempPath(), "spz2-mod-reloader");
     }
 
@@ -156,6 +158,11 @@ public class Reloader
             report.Add("  the new entry point threw while constructing - see the log. That mod is now not running.");
             return report;
         }
+
+        // 5. Put it back in front of the session callbacks that have already run. Without
+        //    this its console commands are still the old instance's, answering out of
+        //    state that was cleared when the old instance was disposed.
+        Rewiring.Replay(oldEntry.Assembly, bootstrap.Assembly, report);
 
         report.Add("Reloaded. Anything the old instance did not undo in Dispose now exists twice.");
         return report;

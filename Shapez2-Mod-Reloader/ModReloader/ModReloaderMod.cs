@@ -20,24 +20,32 @@ public class ModReloaderMod : IMod
 {
     private readonly ILogger Logger;
     private readonly ModRegistry Registry;
+    private readonly SessionRewiring Rewiring;
     private readonly Hook SessionHook;
+    private readonly Hook BuildingModulesHook;
     private readonly RewirerHandle CommandsHandle;
 
     public ModReloaderMod(ILogger logger)
     {
         Logger = logger;
         Registry = new ModRegistry(logger);
+        Rewiring = new SessionRewiring(logger, Registry);
 
         // Runs once per session and hands over the orchestrator, whose dependency container
-        // holds the modding framework.
+        // holds the modding framework - and the side-panel lookup, which is only ever
+        // offered here, so a reloaded mod's panels can only be restored if we keep it.
         SessionHook = DetourHelper.CreatePostfixHook<GameSessionOrchestrator, IslandsModulesLookup>(
             (orchestrator, lookup) => orchestrator.InjectIslandsModuleProviders(lookup),
             OnSessionReady);
 
+        BuildingModulesHook = DetourHelper.CreatePostfixHook<GameSessionOrchestrator, BuildingsModulesLookup>(
+            (orchestrator, lookup) => orchestrator.InjectBuildingsModuleProviders(lookup),
+            OnBuildingModulesReady);
+
         Seeder seeder = new Seeder(logger);
 
         CommandsHandle = GameRewirers.AddRewirer(
-            new ReloaderCommands(logger, Registry, new Reloader(logger, Registry), seeder));
+            new ReloaderCommands(logger, Registry, new Reloader(logger, Registry, Rewiring), seeder));
 
         // A staged build with nothing installed beside it is invisible to the game, so the
         // first build of a new mod would otherwise have nothing to reload. Installing it
@@ -55,6 +63,20 @@ public class ModReloaderMod : IMod
         try
         {
             Registry.Capture(orchestrator);
+            Rewiring.Capture(lookup);
+        }
+        catch (Exception exception)
+        {
+            Logger.Exception?.LogException(exception);
+        }
+    }
+
+    private void OnBuildingModulesReady(GameSessionOrchestrator orchestrator, BuildingsModulesLookup lookup)
+    {
+        try
+        {
+            Registry.Capture(orchestrator);
+            Rewiring.Capture(lookup);
         }
         catch (Exception exception)
         {
@@ -65,6 +87,7 @@ public class ModReloaderMod : IMod
     public void Dispose()
     {
         GameRewirers.RemoveRewirer(CommandsHandle);
+        BuildingModulesHook?.Dispose();
         SessionHook?.Dispose();
     }
 }

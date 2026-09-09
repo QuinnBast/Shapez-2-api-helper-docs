@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -51,6 +51,32 @@ public class ModRegistry
 
         loader = Loader;
         return loader != null;
+    }
+
+    /// <summary>
+    /// The session's debug console, from the same container Shifter resolves it out of.
+    /// Not cached: the console is built per savegame, so a stale one would silently
+    /// register commands nobody can reach.
+    /// </summary>
+    public bool TryGetConsole(out IDebugConsole console)
+    {
+        console = null;
+
+        if (Orchestrator == null)
+        {
+            return false;
+        }
+
+        try
+        {
+            console = Orchestrator.DependencyContainer.Resolve<IDebugConsole>();
+        }
+        catch (Exception exception)
+        {
+            Logger.Exception?.LogException(exception);
+        }
+
+        return console != null;
     }
 
     /// <summary>
