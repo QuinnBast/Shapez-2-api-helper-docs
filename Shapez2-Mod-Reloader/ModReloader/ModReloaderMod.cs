@@ -24,6 +24,9 @@ public class ModReloaderMod : IMod
     private readonly Hook SessionHook;
     private readonly Hook BuildingModulesHook;
     private readonly RewirerHandle CommandsHandle;
+    private readonly Seeder Seed;
+
+    private bool Seeded;
 
     public ModReloaderMod(ILogger logger)
     {
@@ -42,18 +45,10 @@ public class ModReloaderMod : IMod
             (orchestrator, lookup) => orchestrator.InjectBuildingsModuleProviders(lookup),
             OnBuildingModulesReady);
 
-        Seeder seeder = new Seeder(logger);
+        Seed = new Seeder(logger, Registry);
 
         CommandsHandle = GameRewirers.AddRewirer(
-            new ReloaderCommands(logger, Registry, new Reloader(logger, Registry, Rewiring), seeder));
-
-        // A staged build with nothing installed beside it is invisible to the game, so the
-        // first build of a new mod would otherwise have nothing to reload. Installing it
-        // here means the next launch loads it normally, checks included.
-        foreach (string line in seeder.Seed())
-        {
-            Logger.Info?.Log(line);
-        }
+            new ReloaderCommands(logger, Registry, new Reloader(logger, Registry, Rewiring), Seed));
 
         Logger.Info?.Log("Mod Reloader ready - mrl.list, then mrl.reload <name> (F1).");
     }
@@ -64,6 +59,21 @@ public class ModReloaderMod : IMod
         {
             Registry.Capture(orchestrator);
             Rewiring.Capture(lookup);
+
+            // A staged build with nothing installed beside it is invisible to the game, so
+            // the first build of a new mod would otherwise have nothing to reload.
+            // Deliberately here rather than in the constructor: the loader is only
+            // reachable now, and without it we could not tell that a mod is already
+            // running from the workshop and must not be installed a second time.
+            if (!Seeded)
+            {
+                Seeded = true;
+
+                foreach (string line in Seed.Seed())
+                {
+                    Logger.Info?.Log(line);
+                }
+            }
         }
         catch (Exception exception)
         {

@@ -80,6 +80,37 @@ public class ModRegistry
     }
 
     /// <summary>
+    /// Whether a mod built around the named assembly is already running, and from where.
+    /// </summary>
+    public bool TryGetRunningAssembly(string assemblyName, out string directory)
+    {
+        directory = null;
+
+        if (!TryGetLoader(out ModLoader loader) || string.IsNullOrEmpty(assemblyName))
+        {
+            return false;
+        }
+
+        foreach (ExecutableMod mod in loader.ExecutableMods)
+        {
+            Type entry = mod.EntryPoint.GetType();
+
+            if (!string.Equals(entry.Assembly.GetName().Name, assemblyName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            directory = TryResolveFor(mod, out ResolvedMod resolved)
+                ? resolved.Descriptor.DirectoryPath
+                : entry.Assembly.GetName().Name;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// One line per loaded mod, showing every name that mrl.reload will accept - so the
     /// listing doubles as the answer to "what do I type".
     /// </summary>

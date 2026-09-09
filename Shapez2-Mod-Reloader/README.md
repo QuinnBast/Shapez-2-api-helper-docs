@@ -22,6 +22,10 @@ In the debug console (**F1**):
 | `mrl.paste` | run whatever is on the clipboard as a console command |
 | `mrl.seed` | install any staged build that has no installed copy yet |
 
+`mrl.reload` also puts the new code back in front of the session callbacks that only fire
+once at init - console commands and side-panel modules - which no mod can do for itself.
+Without that a reloaded mod's commands keep answering from the disposed instance.
+
 The clipboard commands exist because the in-game console cannot be selected from, so
 anything worth reading is trapped there. `mrl.run peo.types` runs that command and leaves
 its output on your clipboard. Everything these commands print is mirrored into
@@ -64,6 +68,10 @@ no csproj edit at all.
 A staged build with no installed copy beside it is invisible: the game never discovers it,
 so there is nothing for `mrl.reload` to replace. Mod Reloader copies such a build into the
 mods folder at startup, and `mrl.seed` does the same on demand.
+
+A mod already running from somewhere else - a workshop subscription, most likely - is left
+alone: a second copy would give the loader two mods with the same id, and someone who
+deleted their local copy to test the published one should not find it put back.
 
 The copy cannot take effect in the session that makes it - discovery runs before any mod's
 code, this one included - so it loads on the next launch. That is the point of copying

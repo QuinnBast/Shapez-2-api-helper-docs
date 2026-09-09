@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using ILogger = Core.Logging.ILogger;
@@ -23,10 +23,12 @@ using ILogger = Core.Logging.ILogger;
 public class Seeder
 {
     private readonly ILogger Logger;
+    private readonly ModRegistry Registry;
 
-    public Seeder(ILogger logger)
+    public Seeder(ILogger logger, ModRegistry registry)
     {
         Logger = logger;
+        Registry = registry;
     }
 
     public IEnumerable<string> Seed()
@@ -77,6 +79,17 @@ public class Seeder
                 continue;
             }
 
+            // The mod may already be running from somewhere else - a workshop
+            // subscription, most likely. Installing a second copy would give the loader
+            // two mods with the same id, and it would then refuse one of them. Somebody
+            // who deleted their local copy to test the published one should not have it
+            // quietly put back.
+            if (AlreadyRunning(folder, out string where))
+            {
+                report.Add(name + ": already running from " + where + " - not installing a second copy.");
+                continue;
+            }
+
             try
             {
                 Copy(folder, target);
@@ -103,6 +116,35 @@ public class Seeder
         }
 
         return report;
+    }
+
+    /// <summary>
+    /// Whether one of the assemblies in a staged build is already loaded, whatever folder
+    /// it came from. Matching on the assembly rather than the folder name is what catches
+    /// the workshop copy, whose folder is a numeric id.
+    /// </summary>
+    private bool AlreadyRunning(string folder, out string where)
+    {
+        where = null;
+
+        try
+        {
+            foreach (string file in Directory.GetFiles(folder, "*.dll"))
+            {
+                string assembly = Path.GetFileNameWithoutExtension(file);
+
+                if (Registry.TryGetRunningAssembly(assembly, out where))
+                {
+                    return true;
+                }
+            }
+        }
+        catch (Exception exception)
+        {
+            Logger.Exception?.LogException(exception);
+        }
+
+        return false;
     }
 
     private static void Copy(string from, string to)
