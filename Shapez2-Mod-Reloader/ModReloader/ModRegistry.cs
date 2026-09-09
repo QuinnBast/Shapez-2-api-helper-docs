@@ -53,7 +53,10 @@ public class ModRegistry
         return loader != null;
     }
 
-    /// <summary>One line per loaded mod: what it is, and where its assembly came from.</summary>
+    /// <summary>
+    /// One line per loaded mod, showing every name that mrl.reload will accept - so the
+    /// listing doubles as the answer to "what do I type".
+    /// </summary>
     public IEnumerable<string> Describe()
     {
         if (!TryGetLoader(out ModLoader loader))
@@ -61,33 +64,123 @@ public class ModRegistry
             return new[] { "The mod loader is not reachable yet - load a save first." };
         }
 
-        List<string> lines = new List<string>();
+        List<string> lines = new List<string>
+        {
+            loader.ExecutableMods.Count + " mods loaded, "
+                + loader.ResolvedMods.Count + " resolved"
+        };
 
         foreach (ExecutableMod mod in loader.ExecutableMods)
         {
             Type entry = mod.EntryPoint.GetType();
-            string assembly;
+            lines.Add("  " + entry.Name + "  (v" + mod.Metadata.Version + ")");
 
-            try
+            foreach (string name in NamesFor(mod))
             {
-                assembly = Path.GetFileName(entry.Assembly.Location);
+                lines.Add("      matches: " + name);
             }
-            catch (Exception)
-            {
-                assembly = "<unknown>";
-            }
-
-            lines.Add("  " + mod.Metadata.Version + "  " + entry.Name.PadRight(28) + assembly);
         }
 
-        lines.Insert(0, loader.ExecutableMods.Count + " mods loaded");
         return lines;
     }
 
+    /// <summary>Every string that should identify this mod on the command line.</summary>
+    private IEnumerable<string> NamesFor(ExecutableMod mod)
+    {
+        List<string> names = new List<string>();
+
+        Type entry = mod.EntryPoint.GetType();
+        names.Add(entry.Name);
+        names.Add(entry.Assembly.GetName().Name);
+
+        if (TryResolveFor(mod, out ResolvedMod resolved))
+        {
+            if (resolved.Descriptor.ModId != null)
+            {
+                names.Add(resolved.Descriptor.ModId.ToString());
+            }
+
+            if (!string.IsNullOrEmpty(resolved.Descriptor.ModTitle))
+            {
+                names.Add(resolved.Descriptor.ModTitle);
+            }
+
+            string folder = FolderName(resolved.Descriptor.DirectoryPath);
+            if (!string.IsNullOrEmpty(folder))
+            {
+                names.Add(folder);
+            }
+        }
+
+        List<string> unique = new List<string>();
+        foreach (string name in names)
+        {
+            if (!string.IsNullOrWhiteSpace(name) && !unique.Contains(name))
+            {
+                unique.Add(name);
+            }
+        }
+
+        return unique;
+    }
+
     /// <summary>
-    /// Finds a loaded mod whose title, entry point type or directory matches, case
-    /// insensitively. Returns false when the name is ambiguous, so a typo cannot reload
-    /// something unintended.
+    /// Correlates a running mod with its resolved definition, which is the only place the
+    /// directory path lives. Matching on the manifest instance is the direct route; the
+    /// assembly name is the fallback in case the loader rebuilt the manifest.
+    /// </summary>
+    private bool TryResolveFor(ExecutableMod mod, out ResolvedMod resolved)
+    {
+        resolved = default(ResolvedMod);
+
+        if (!TryGetLoader(out ModLoader loader))
+        {
+            return false;
+        }
+
+        foreach (ResolvedMod candidate in loader.ResolvedMods)
+        {
+            if (ReferenceEquals(candidate.Metadata, mod.Metadata))
+            {
+                resolved = candidate;
+                return true;
+            }
+        }
+
+        string assembly = mod.EntryPoint.GetType().Assembly.GetName().Name + ".dll";
+
+        foreach (ResolvedMod candidate in loader.ResolvedMods)
+        {
+            string[] assemblies = candidate.Metadata.Assemblies ?? Array.Empty<string>();
+
+            foreach (string declared in assemblies)
+            {
+                if (string.Equals(declared, assembly, StringComparison.OrdinalIgnoreCase))
+                {
+                    resolved = candidate;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static string FolderName(string directoryPath)
+    {
+        if (string.IsNullOrEmpty(directoryPath))
+        {
+            return null;
+        }
+
+        // A trailing separator makes GetFileName return an empty string.
+        return Path.GetFileName(directoryPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+    }
+
+    /// <summary>
+    /// Finds a running mod by any of the names <see cref="Describe"/> lists, matching case
+    /// insensitively. Ambiguity is refused rather than guessed, so a partial name cannot
+    /// reload something unintended.
     /// </summary>
     public bool TryFind(string name, out ResolvedMod resolved, out ExecutableMod executable, out string problem)
     {
@@ -107,11 +200,26 @@ public class ModRegistry
             return false;
         }
 
-        List<ResolvedMod> matches = new List<ResolvedMod>();
+        // Search the running mods, not the resolved list: a resolved mod without a running
+        // entry point cannot be reloaded anyway, and this keeps both halves in step.
+        List<ExecutableMod> matches = new List<ExecutableMod>();
+        List<string> available = new List<string>();
 
-        foreach (ResolvedMod candidate in loader.ResolvedMods)
+        foreach (ExecutableMod candidate in loader.ExecutableMods)
         {
-            if (Matches(candidate, name))
+            bool matched = false;
+
+            foreach (string candidateName in NamesFor(candidate))
+            {
+                available.Add(candidateName);
+
+                if (candidateName.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    matched = true;
+                }
+            }
+
+            if (matched)
             {
                 matches.Add(candidate);
             }
@@ -119,7 +227,8 @@ public class ModRegistry
 
         if (matches.Count == 0)
         {
-            problem = "No loaded mod matches \"" + name + "\". Try mrl.list.";
+            problem = "No running mod matches \"" + name + "\". Known names: "
+                + string.Join(", ", available.ToArray());
             return false;
         }
 
@@ -129,28 +238,15 @@ public class ModRegistry
             return false;
         }
 
-        resolved = matches[0];
+        executable = matches[0];
 
-        foreach (ExecutableMod mod in loader.ExecutableMods)
+        if (!TryResolveFor(executable, out resolved))
         {
-            if (ReferenceEquals(mod.Metadata, resolved.Metadata))
-            {
-                executable = mod;
-                return true;
-            }
+            problem = "Found the running mod but not its folder on disk, so there is nothing to reload from.";
+            return false;
         }
 
-        problem = "\"" + name + "\" resolved but has no running entry point.";
-        return false;
-    }
-
-    private static bool Matches(ResolvedMod candidate, string name)
-    {
-        string title = candidate.Descriptor.ModTitle ?? string.Empty;
-        string directory = candidate.Descriptor.DirectoryPath ?? string.Empty;
-
-        return title.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0
-            || Path.GetFileName(directory).IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0;
+        return true;
     }
 
     /// <summary>Replaces a mod's running entry point in the loader's own list.</summary>

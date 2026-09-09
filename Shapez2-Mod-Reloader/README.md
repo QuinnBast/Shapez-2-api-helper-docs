@@ -15,8 +15,16 @@ In the debug console (**F1**):
 
 | | |
 |---|---|
-| `mrl.list` | every loaded mod, its version, entry point and assembly file |
+| `mrl.list` | every loaded mod, with every name `mrl.reload` will accept |
 | `mrl.reload <name>` | dispose that mod and run its rebuilt assembly |
+| `mrl.run <command>` | run another command, print it, and copy its output to the clipboard |
+| `mrl.copy` | put the last captured output on the clipboard again |
+| `mrl.paste` | run whatever is on the clipboard as a console command |
+
+The clipboard commands exist because the in-game console cannot be selected from, so
+anything worth reading is trapped there. `mrl.run peo.types` runs that command and leaves
+its output on your clipboard. Everything these commands print is mirrored into
+`Player.log` as well, so output survives even if the clipboard is unavailable.
 
 The name matches loosely against the mod's title and folder, and refuses ambiguous matches
 so a typo cannot reload the wrong thing. The loop becomes:

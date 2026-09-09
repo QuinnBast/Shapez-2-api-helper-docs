@@ -105,6 +105,12 @@
             <Private>False</Private>
         </Reference>
 
+        <!-- GUIUtility.systemCopyBuffer is the only clipboard a Unity player has. -->
+        <Reference Include="UnityEngine.IMGUIModule">
+            <HintPath>$(SPZ2_PATH)\UnityEngine.IMGUIModule.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+
         <Reference Include="Game.Content">
             <HintPath>$(SPZ2_PATH)\Game.Content.dll</HintPath>
             <Private>False</Private>
