@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using Game.Core.Modding;
 using ShapezShifter.Hijack;
 using UnityEngine;
 using ILogger = Core.Logging.ILogger;
@@ -19,15 +21,17 @@ public class ReloaderCommands : IConsoleRewirer
     private readonly ILogger Logger;
     private readonly ModRegistry Registry;
     private readonly Reloader Reloader;
+    private readonly SourceLinks Links;
 
     /// The last output captured by mrl.run, so mrl.copy can put it back on the clipboard.
     private string LastCaptured = string.Empty;
 
-    public ReloaderCommands(ILogger logger, ModRegistry registry, Reloader reloader)
+    public ReloaderCommands(ILogger logger, ModRegistry registry, Reloader reloader, SourceLinks links)
     {
         Logger = logger;
         Registry = registry;
         Reloader = reloader;
+        Links = links;
     }
 
     public void RegisterCommands(IDebugConsole console)
@@ -37,7 +41,95 @@ public class ReloaderCommands : IConsoleRewirer
         Register(console, "reload", new DebugConsole.StringOption("mod"),
             context => Emit(context, Reloader.Reload(context.GetString(0))));
 
-        // Run another console command, print what it printed, and put it on the clipboard.
+        // Point the reloader at where a mod's fresh build lands. The path comes from the
+        // clipboard because a Windows path with spaces cannot survive command tokenising -
+        // copy it in Explorer, then run this.
+        Register(console, "link", new DebugConsole.StringOption("mod"), context =>
+        {
+            string mod = context.GetString(0);
+
+            if (!Registry.TryFind(mod, out ResolvedMod resolved, out ExecutableMod _, out string problem))
+            {
+                Emit(context, problem);
+                return;
+            }
+
+            string path;
+            try
+            {
+                path = (GUIUtility.systemCopyBuffer ?? string.Empty).Trim().Trim('"');
+            }
+            catch (Exception exception)
+            {
+                Logger.Exception?.LogException(exception);
+                Emit(context, "Could not read the clipboard - see the log.");
+                return;
+            }
+
+            if (path.Length == 0)
+            {
+                Emit(context, "Copy the build folder path first, then run this again.");
+                Emit(context, "Usually the project's obj/Debug - a normal build writes there even");
+                Emit(context, "when the copy into the mods folder fails.");
+                return;
+            }
+
+            if (!Directory.Exists(path))
+            {
+                Emit(context, "No such folder: " + path);
+                return;
+            }
+
+            string folder = ModFolderName(resolved);
+            string[] assemblies = resolved.Metadata.Assemblies ?? new string[0];
+            bool found = false;
+
+            foreach (string assembly in assemblies)
+            {
+                if (File.Exists(Path.Combine(path, assembly)))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+            {
+                Emit(context, "That folder has none of " + folder + "'s assemblies in it - "
+                    + "expected one of: " + string.Join(", ", assemblies));
+                return;
+            }
+
+            Links.Set(folder, path);
+            Emit(context, "Linked " + folder + " -> " + path);
+            Emit(context, "Saved to " + Links.ConfigPath);
+        });
+
+        Register(console, "links", null, context =>
+        {
+            int count = 0;
+
+            foreach (KeyValuePair<string, string> link in Links.All)
+            {
+                Emit(context, "  " + link.Key + " -> " + link.Value);
+                count++;
+            }
+
+            if (count == 0)
+            {
+                Emit(context, "No links yet. Copy a build folder path, then: mrl.link <mod>");
+            }
+        });
+
+        Register(console, "unlink", new DebugConsole.StringOption("mod"), context =>
+        {
+            string mod = context.GetString(0);
+            Emit(context, Links.Remove(mod)
+                ? "Unlinked " + mod
+                : "No link for \"" + mod + "\" - names come from mrl.links");
+        });
+
+        // Run another command, print what it printed, and put it on the clipboard.
         Register(console, "run", new DebugConsole.StringOption("command"), context =>
         {
             string command = context.GetString(0);
@@ -132,6 +224,13 @@ public class ReloaderCommands : IConsoleRewirer
     {
         context.Output?.Invoke(line);
         Logger.Info?.Log(line);
+    }
+
+    private static string ModFolderName(ResolvedMod resolved)
+    {
+        string directory = resolved.Descriptor.DirectoryPath ?? string.Empty;
+        return Path.GetFileName(
+            directory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
     }
 
     private static bool TrySetClipboard(string text, out string problem)

@@ -16,6 +16,8 @@ In the debug console (**F1**):
 | | |
 |---|---|
 | `mrl.list` | every loaded mod, with every name `mrl.reload` will accept |
+| `mrl.link <mod>` | point the reloader at that mod's build folder (path from the clipboard) |
+| `mrl.links` / `mrl.unlink <mod>` | show or remove those links |
 | `mrl.reload <name>` | dispose that mod and run its rebuilt assembly |
 | `mrl.run <command>` | run another command, print it, and copy its output to the clipboard |
 | `mrl.copy` | put the last captured output on the clipboard again |

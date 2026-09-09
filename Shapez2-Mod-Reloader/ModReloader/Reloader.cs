@@ -29,15 +29,17 @@ public class Reloader
 {
     private readonly ILogger Logger;
     private readonly ModRegistry Registry;
+    private readonly SourceLinks Links;
 
     /// One shadow directory per session, cleared on the first reload.
     private readonly string ShadowRoot;
     private int Generation;
 
-    public Reloader(ILogger logger, ModRegistry registry)
+    public Reloader(ILogger logger, ModRegistry registry, SourceLinks links)
     {
         Logger = logger;
         Registry = registry;
+        Links = links;
         ShadowRoot = Path.Combine(Path.GetTempPath(), "spz2-mod-reloader");
     }
 
@@ -177,16 +179,25 @@ public class Reloader
         string folder = Path.GetFileName(
             installed.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
-        string staged = Path.Combine(GameEnvironment.DataPath, "mods-dev", folder);
-
-        if (!Directory.Exists(staged))
+        // A folder the modder pointed us at - typically their project's obj/Debug, which a
+        // normal build writes even when the copy into mods/ fails.
+        if (Links.TryGet(folder, out string linked) && Directory.Exists(linked))
         {
-            report.Add("  source: the installed folder (build with -p:Dev=true to stage instead)");
-            return installed;
+            report.Add("  source: " + linked + " (linked, built " + BuiltWhen(linked, resolved) + ")");
+            return linked;
         }
 
-        report.Add("  source: " + staged + " (staged " + BuiltWhen(staged, resolved) + ")");
-        return staged;
+        string staged = Path.Combine(GameEnvironment.DataPath, "mods-dev", folder);
+
+        if (Directory.Exists(staged))
+        {
+            report.Add("  source: " + staged + " (staged " + BuiltWhen(staged, resolved) + ")");
+            return staged;
+        }
+
+        report.Add("  source: the installed folder - which the game has locked, so this will");
+        report.Add("          reload the same bytes. Use mrl.link, or build with -p:Dev=true.");
+        return installed;
     }
 
     /// <summary>

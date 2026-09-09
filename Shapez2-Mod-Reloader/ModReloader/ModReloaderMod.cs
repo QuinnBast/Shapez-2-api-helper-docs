@@ -34,8 +34,10 @@ public class ModReloaderMod : IMod
             (orchestrator, lookup) => orchestrator.InjectIslandsModuleProviders(lookup),
             OnSessionReady);
 
-        CommandsHandle = GameRewirers.AddRewirer(
-            new ReloaderCommands(logger, Registry, new Reloader(logger, Registry)));
+        SourceLinks links = new SourceLinks(logger, GameEnvironment.DataPath);
+
+        CommandsHandle = GameRewirers.AddRewirer(new ReloaderCommands(
+            logger, Registry, new Reloader(logger, Registry, links), links));
 
         Logger.Info?.Log("Mod Reloader ready - mrl.list, then mrl.reload <name> (F1).");
     }
