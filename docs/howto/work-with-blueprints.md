@@ -89,6 +89,71 @@ building has to behave:
 (`BlueprintLegacyIconDeserializer` exists for exactly this), so blueprints outlive
 format changes.
 
+## Reading what is inside a blueprint
+
+A blueprint is a flat array of entries, each an island definition plus a local position, a
+rotation, a configuration blob, and the buildings on it:
+
+```csharp
+foreach (IslandBlueprint.Entry entry in blueprint.Entries)
+{
+    IIslandDefinition definition = entry.Definition;
+    ChunkVector chunk           = entry.Chunk_L;      // local to the blueprint
+    GridRotation rotation       = entry.Rotation;
+    byte[] configuration        = entry.Configuration;
+    BuildingBlueprint buildings = entry.BuildingBlueprint;   // may be null
+}
+```
+
+Buildings are the same shape one level down: `BuildingBlueprint.Entry` carries `Definition`,
+`Tile_L`, `Rotation` and `AdditionalConfigData`.
+
+Both configuration blobs decode through one public static helper:
+
+```csharp
+BuildingBlueprintProcessor.TryGetConfig<IIslandConfiguration>(
+    GameVersionEnvironment.CurrentVersion, entry.Definition, entry.Configuration,
+    out IIslandConfiguration config, logger);
+```
+
+`IslandBlueprintProcessor` uses a `BlueprintProcessorConfigCachedConverter` instead, but
+that is only a cache over the same call — the static form is fine.
+
+## Expanding a blueprint into instances
+
+Turning entries into placed entities is what `IslandBlueprintProcessor` does. If you want to
+do it yourself — into your own layout, for
+[a detached simulation](run-a-detached-simulation.md), say — the transform chain is:
+
+```csharp
+GlobalChunkTransform origin = new GlobalChunkTransform(
+    new GlobalChunkCoordinate(0, 0, 0), GridRotation.NoRotate);
+
+// Island
+GlobalChunkTransform islandTransform =
+    new LocalChunkTransform(entry.Chunk_L, entry.Rotation).ToGlobal(origin);
+
+// Buildings, relative to that island's tile origin
+GlobalTileTransform tileOrigin =
+    new GlobalTileTransform(islandTransform.Position.ToOrigin_G(), origin.Rotation);
+
+GlobalTileTransform placed =
+    new LocalTileTransform(building.Tile_L, building.Rotation).ToGlobal(in tileOrigin);
+```
+
+> [!WARNING]
+> If you place a blueprint **rotated**, the vanilla processor adds a `+19` tile offset to the
+> building origin, varying by rotation and by whether the blueprint is mirrored. Placing
+> unrotated at the origin avoids the whole question; if you need rotation, copy
+> `IslandBlueprintProcessor.AddIslandBlueprintToPlacementData` rather than deriving it.
+
+Mirroring is handled by `MirrorIslandPrimaryAxis` / `MirrorIslandSecondaryAxis`, which
+rewrite the definition too — `FlippableDefinition.OtherVariant` — not just the coordinates.
+
+Expanding this way is faithful: a blueprint captured from a platform and expanded into a
+private layout produces an identical building count and an identical number of simulations to
+copying that platform directly.
+
 ## What this means for a mod that adds buildings
 
 You mostly get blueprint support for free — a building added through Flow is

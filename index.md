@@ -25,6 +25,7 @@ This site has two halves:
 | Walk islands, buildings, and their state | [The Map Model](docs/map-model.md) |
 | Stop guessing what `_G` and `_I` mean | [Coordinate Systems](docs/coordinates.md) |
 | Read what a machine is actually doing | [Simulations and Item Lanes](docs/simulations-and-lanes.md) |
+| Work out what crosses a platform's boundary | [Ports and Notches](docs/ports-and-notches.md) |
 | Draw something in the world | [Rendering](docs/rendering.md) |
 | Change behaviour the API doesn't expose | [Hooking the Game](docs/hooking.md) |
 

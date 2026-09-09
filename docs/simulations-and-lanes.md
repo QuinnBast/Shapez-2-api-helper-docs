@@ -344,3 +344,39 @@ a system that pattern-matches your building and creates your simulation — the
 `DiagonalCutter` sample does exactly this, and ShapezShifter's Flow layer wires it up
 for you when you use `Building.Create(...)`. Reading existing machines, as above,
 requires no system of your own.
+
+## Not everything is simulated every tick
+
+Simulation cost is **not** flat in building count, which matters if you are reasoning about
+performance or writing a mod that claims to reduce it.
+
+Clusters are updated at a rate set by their level of detail, and LOD comes from **camera
+distance** — `MapCuller` produces a `SimulationLOD` per visible chunk via
+`LODRenderConfig.ComputeSimulationLOD`. `ProcessingUpdateStrategy` maps LOD to a required
+interval through `RequiredUpdateTicksByLOD`, built as:
+
+```csharp
+array[i] = SimulationConstants.MaxSimulationUpdateDelta >> (num - i - 1);
+```
+
+So a distant cluster updates less often, with a larger delta each time — and because
+`Update(Ticks deltaTicks)` advances a lane's progress in one step rather than iterating
+ticks, a 60-tick update costs about the same as a 1-tick one. Those coarse updates really
+are cheaper, not merely rarer.
+
+Two consequences:
+
+- **Anything off-screen already gets the maximum discount.** A cluster absent from the
+  culler's list is updated as `SimulationLOD.Lowest` (`SimulationGraph.Update`), so moving
+  buildings somewhere the camera never goes buys nothing that not looking at them did not
+  already buy.
+- Even at the lowest LOD a cluster still updates every `MaxSimulationUpdateDelta`, so
+  nothing ever stops entirely.
+
+If you are running [a simulation of your own](howto/run-a-detached-simulation.md), supply a
+strategy that ignores LOD — there is no camera, and rationing would only make measurements
+harder to read.
+
+> [!TIP]
+> The `prediction-graph` and simulation-LOD debug views (`F1` → debug modes) draw the
+> cluster grid and how many ticks each cluster is behind. Faster than reasoning about it.

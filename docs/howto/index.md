@@ -43,6 +43,10 @@ there and follow the links.
 | Measure what a belt or machine is actually moving | [Measure throughput](measure-throughput.md) |
 | Tell a bottleneck from a starved machine | [Measure throughput](measure-throughput.md#throughput-alone-cannot-find-a-bottleneck) |
 | Total up what a platform ships | [Measure throughput](measure-throughput.md#there-is-more-than-one-way-off-a-platform) |
+| Know which shape will arrive somewhere, before it does | [Read shape predictions](read-shape-predictions.md) |
+| Tell whether a region of factory is simple enough to reason about | [Read shape predictions](read-shape-predictions.md#degenerated-is-the-games-own-give-up) |
+| Work out what crosses the boundary of a set of platforms | [Ports and Notches](../ports-and-notches.md) |
+| Measure a factory's ceiling rather than its current rate | [Run a detached simulation](run-a-detached-simulation.md) |
 
 ## Game systems
 
@@ -53,6 +57,7 @@ there and follow the links.
 | Read a wire, or react to a signal | [Work with signals and wires](work-with-signals.md) |
 | Read where trains are and what they carry | [Work with trains](work-with-trains.md) |
 | Read or add to the blueprint library | [Work with blueprints](work-with-blueprints.md) |
+| Read what is inside a blueprint, or expand one myself | [Work with blueprints](work-with-blueprints.md#reading-what-is-inside-a-blueprint) |
 
 ## Showing things to the player
 

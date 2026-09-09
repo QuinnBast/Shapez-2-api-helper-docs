@@ -116,3 +116,50 @@ believes it has is usually the fastest way to find the bug — much faster than
   the console — not at mod-load time.
 - Keep command handlers defensive. `CurrentMap` can be `null` and a throwing handler is
   a poor debugging experience.
+- **Console output is not logged.** The game logs the command *name* you typed and nothing
+  your handler prints, and the in-game console cannot be selected from — so any report
+  worth reading twice should also go to `Logger.Info` or a file.
+
+## Registration happens once per session
+
+Worth knowing before you lose an afternoon to it. `ConsoleInterceptor` hooks
+`GameSessionOrchestrator.Init_9_ConsoleCommands`, which fires **once**, when a session
+initialises:
+
+```csharp
+ConsoleCommandsHook = DetourHelper.CreatePostfixHook(
+    (GameSessionOrchestrator orchestrator, IGameData gameData, GlobalsData globals) =>
+        orchestrator.Init_9_ConsoleCommands(gameData, globals), SetupConsoleCommands);
+```
+
+Adding an `IConsoleRewirer` after that point registers nothing — the hook has already run
+and will not run again. Shifter's own `ModConsoleCommandsCreator` goes through the same
+interceptor, so it is no help either.
+
+This mostly bites when **hot-reloading a mod mid-session**. The reloaded instance adds its
+rewirer, nothing asks it to register, and the console keeps dispatching to a delegate in the
+assembly you just replaced — so your command silently runs the *old* code. An unchanged
+result then looks identical to a change that did nothing, which is a bad place to debug
+from; putting a build id in your command's output makes it obvious.
+
+Two details make it worse before they make it better:
+
+- `IDebugConsole` exposes `Register` and **no unregister**, and the backing
+  `Dictionary<string, Command>` is filled with `Commands.Add`, which **throws** on a
+  duplicate key. A naive second registration fails rather than replacing.
+- That dictionary is reachable through [the publicizer](../publicizer.md), so clearing an id
+  before claiming it makes registration idempotent:
+
+```csharp
+(console as DebugConsole)?.Commands.Remove(id);
+console.Register(id, handler);
+```
+
+A mod should also undo its own registrations in `Dispose`, so a replaced instance stops
+being reachable from the console.
+
+> [!TIP]
+> The "fires once" caveat applies to **any** hook on session setup. If your mod needs the
+> orchestrator and wants to survive a reload, capture it from something that fires
+> repeatedly — `GameSessionOrchestrator.Tick` works, and a reference comparison per frame
+> costs nothing — rather than from a one-shot init method.

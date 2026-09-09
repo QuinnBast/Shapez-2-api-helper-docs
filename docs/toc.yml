@@ -45,6 +45,10 @@
       href: howto/read-statistics.md
     - name: Measure what a factory is moving
       href: howto/measure-throughput.md
+    - name: Read what shapes will flow where
+      href: howto/read-shape-predictions.md
+    - name: Run a factory the player cannot see
+      href: howto/run-a-detached-simulation.md
 
     - name: "— Game systems"
     - name: Work with shapes
@@ -94,6 +98,8 @@
       href: coordinates.md
     - name: Simulations and Item Lanes
       href: simulations-and-lanes.md
+    - name: Ports and Notches
+      href: ports-and-notches.md
     - name: Rendering
       href: rendering.md
     - name: Hooking the Game
