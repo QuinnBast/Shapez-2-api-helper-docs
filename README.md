@@ -2,6 +2,10 @@
 
 Every shapez 2 mod I maintain, plus the community modding documentation, in one place.
 
+**📖 [shapez 2 Modding Docs](https://quinnbast.github.io/Shapez2-Mods/)** — how the game and
+ShapezShifter actually work: architecture, hooking, coordinates, and step-by-step guides. Built
+from `shapez2-modding-docs/` in this repository.
+
 ## What's here
 
 | Folder | What it is |
