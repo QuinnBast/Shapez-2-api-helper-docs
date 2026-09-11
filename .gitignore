@@ -3,8 +3,8 @@
 # instead — see the README.
 decompiled/
 
-# tobspr's official sample repository, kept as a sibling checkout so it can still track
-# upstream. Cloned separately, not vendored here.
+# tobspr's official sample repository. Cloned in place, keeping its own git so it still
+# tracks upstream — ignored here rather than vendored into this history.
 shapez2-mod-samples/
 
 # .NET build output

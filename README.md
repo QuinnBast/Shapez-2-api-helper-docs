@@ -44,8 +44,9 @@ redistributed. They are reconstructed locally into `decompiled/`, which is gitig
 documentation site generates its API reference from them the same way and publishes the result
 as a release asset rather than committing it.
 
-**`shapez2-mod-samples`.** That is [tobspr's official sample repository](https://github.com/tobspr-games/shapez2-mod-samples), kept as a separate
-sibling checkout so it can keep tracking upstream. Clone it beside this one if you want it.
+**`shapez2-mod-samples`.** That is [tobspr's official sample repository](https://github.com/tobspr-games/shapez2-mod-samples). Clone it
+into `shapez2-mod-samples/` if you want it: the folder is gitignored, so the clone keeps its own
+git and goes on tracking upstream instead of being vendored into this history.
 
 ## Documentation
 
@@ -56,14 +57,18 @@ enters git history.
 
 ## History
 
-This repository was assembled from several separate ones. The per-mod histories were rewritten
-into their subdirectories and merged, so they are all still here — but because the merges join
-unrelated histories, `git log -- <folder>` simplifies most of it away. Use `--full-history`:
+This repository was assembled from several separate ones. Three of them had a history worth
+keeping — Space Platform Efficiencies, Platform Blackbox and Mod Reloader — so each was rewritten
+into its subdirectory and merged in. Because those merges join unrelated histories,
+`git log -- <folder>` simplifies nearly all of it away; use `--full-history`:
 
 ```sh
 git log --full-history --oneline -- Shapez2-Space-Platform-Efficiencies
 git log --follow -- Shapez2-Space-Platform-Efficiencies/README.md
 ```
+
+The remaining mods had no repository of their own and arrived as a single snapshot commit, so
+their history here starts at `Add the remaining mods and the toolbar kit`.
 
 ## Licence
 
