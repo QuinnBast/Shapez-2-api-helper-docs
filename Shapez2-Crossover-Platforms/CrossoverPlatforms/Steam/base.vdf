@@ -1,0 +1,45 @@
+"workshopitem"
+{
+    "appid" "2162800"
+    "publishedfileid" "0"
+    "contentfolder" "${CONTENT_PATH}"
+    "previewfile" "${PREVIEW_IMG}"
+    "visibility" "2"
+    "title" "Crossover Platforms"
+    "description" "[h1]Crossover Platforms[/h1]
+Space platform pieces where two paths cross straight through each other, instead of one detouring over the other.
+
+[h2]Three crossings[/h2]
+They appear together in a [b]Crossings[/b] group in the platform toolbar:
+[list]
+[*][b]Belt Crossing[/b] - two space belts crossing
+[*][b]Belt / Pipe Crossing[/b] - a space belt crossing a space pipe
+[*][b]Pipe Crossing[/b] - two space pipes crossing
+[/list]
+Each is a single chunk, straight across. The two paths never interact: shapes and fluids stay on the path they entered on, and a belt end can never connect to a pipe end.
+
+[h2]Laid down by dragging, not by hand[/h2]
+Drag a space belt or space pipe across one that is already there and you get a crossing in place, rather than the lift-up, across and back-down detour the game builds today.
+The flip key (F by default) swaps which way the crossing's second path runs.
+
+Two segments meeting head-on on the same axis, and anything that is not a plain straight piece - a turn, a splitter, an existing crossing - are left to the usual lift.
+
+[h2]The game's own speeds[/h2]
+A crossing is two complete space paths sharing one chunk, with nothing shared between them.
+Lane counts and speeds are read from the vanilla space belt and space pipe at runtime, so belt and pipe speed research applies to a crossing exactly as it does to the track either side of it.
+Select one and its side panel reports each of the two paths separately, using the game's own throughput readouts.
+
+[h2]Before you install[/h2]
+[list]
+[*][b]This mod affects save games.[/b] It cannot be added to, or removed from, a save that already exists - start a new one.
+[*]Available from the first milestone. Anyone installing a crossing mod is not a first-time player, and is installing it precisely to stop building lift detours, so gating it behind late research would defeat the point.
+[*]Requires Shapez Shifter.
+[/list]
+
+[h2]About the art[/h2]
+A crossing is drawn as two of the game's own track segments laid across each other. It reads as track rather than as a black slab, but there is no junction detail and the two decks sit level rather than one passing over the other. A purpose-built model is the obvious next step.
+
+Source and design notes: https://github.com/QuinnBast/Shapez2-Mods/tree/main/Shapez2-Crossover-Platforms
+Bugs and requests: https://github.com/QuinnBast/Shapez2-Mods/issues
+Licensed under Apache 2.0."
+}
