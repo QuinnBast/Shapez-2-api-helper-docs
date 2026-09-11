@@ -12,6 +12,9 @@ bin/
 obj/
 *.user
 
+# Publicizer report, written per build by Krafs.Publicizer
+**/logs/krafs.log
+
 # Rider / Visual Studio
 .idea/
 .vs/

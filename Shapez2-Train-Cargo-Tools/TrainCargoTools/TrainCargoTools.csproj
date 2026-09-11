@@ -1,0 +1,152 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- Name-based toolbar placement. Shared source, not a shared assembly. -->
+    <Import Project="..\..\Shapez2-Toolbar-Kit\ToolbarKit.props"/>
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <Nullable>disable</Nullable>
+        <LangVersion>9</LangVersion>
+        <RootNamespace>TrainCargoTools</RootNamespace>
+        <!-- The publicizer, ShapezShifter and MonoMod.Utils each ship a copy of
+             IgnoresAccessChecksTo -->
+        <NoWarn>$(NoWarn);CS0436</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <OutputPath>$(SPZ2_PERSISTENT)\mods\TrainCargoTools</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Dev)' == 'true'">
+        <OutputPath>$(SPZ2_PERSISTENT)\mods-dev\TrainCargoTools\</OutputPath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Reference Include="ShapezShifter">
+            <HintPath>$(SPZ2_SHIFTER)</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="SPZGameAssembly">
+            <HintPath>$(SPZ2_PATH)\SPZGameAssembly.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Core">
+            <HintPath>$(SPZ2_PATH)\Core.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Core.Localization">
+            <HintPath>$(SPZ2_PATH)\Core.Localization.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core">
+            <HintPath>$(SPZ2_PATH)\Game.Core.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core.Modding">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Modding.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core.Content">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Content.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core.Coordinates">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Coordinates.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core.Simulation">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Simulation.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core.Map.Model">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Map.Model.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core.Map.Layout.Model">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Map.Layout.Model.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core.Map">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Map.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core.Map.Layout">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Map.Layout.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core.Map.Simulation">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Map.Simulation.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core.Rendering">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Rendering.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Content">
+            <HintPath>$(SPZ2_PATH)/Game.Content.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Content.Features">
+            <HintPath>$(SPZ2_PATH)\Game.Content.Features.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Orchestration">
+            <HintPath>$(SPZ2_PATH)\Game.Orchestration.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Interaction">
+            <HintPath>$(SPZ2_PATH)\Game.Interaction.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Unity.Mathematics">
+            <HintPath>$(SPZ2_PATH)\Unity.Mathematics.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.CoreModule">
+            <HintPath>$(SPZ2_PATH)\UnityEngine.CoreModule.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="UnityEngine.ImageConversionModule">
+            <HintPath>$(SPZ2_PATH)\UnityEngine.ImageConversionModule.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+    </ItemGroup>
+
+    <PropertyGroup>
+        <PublicizeAll>true</PublicizeAll>
+        <PublicizerClearCacheOnClean>true</PublicizerClearCacheOnClean>
+        <PublicizerLogFilePath>logs/krafs.log</PublicizerLogFilePath>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <DoNotPublicize Include="SPZGameAssembly:BeltLaneRenderingDefinition" IncludeCompilerGeneratedMembers="false" IncludeVirtualMembers="false"/>
+        <DoNotPublicize Include="Game.Core.Coordinates" IncludeCompilerGeneratedMembers="false" IncludeVirtualMembers="false"/>
+        <DoNotPublicize Include="SPZGameAssembly:BuildingDefinition" IncludeCompilerGeneratedMembers="false" IncludeVirtualMembers="false"/>
+        <DoNotPublicize Include="Game.Orchestration:ParentToolbarElementData" IncludeCompilerGeneratedMembers="false" IncludeVirtualMembers="false"/>
+        <DoNotPublicize Include="Game.Orchestration:RootToolbarElementData" IncludeCompilerGeneratedMembers="false" IncludeVirtualMembers="false"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="MonoMod.RuntimeDetour" Version="25.3.4">
+            <ExcludeAssets>runtime</ExcludeAssets>
+        </PackageReference>
+        <PackageReference Include="Krafs.Publicizer" Version="2.3.0">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+
+        <None Update="manifest.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="translations.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <!-- Toolbar icons are loaded from disk at runtime by FileTextureLoader, so they have to
+             sit beside the assembly. -->
+        <None Update="Resources\**\*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+</Project>

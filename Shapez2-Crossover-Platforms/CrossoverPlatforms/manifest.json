@@ -1,0 +1,21 @@
+{
+  "Version": "0.1.0",
+  "Title": "Crossover Platforms",
+  "Description": "Space platform pieces where two transport paths cross straight through each other without mixing: belt over belt, belt over pipe, pipe over pipe",
+  "Author": "Quinn Bast",
+  "SavedModVersionCompabilityRangeWithSelf": "*-*",
+  "GameVersionSupportRange": "*-*",
+  "AffectsSaveGames": true,
+  "DisablesAchievements": false,
+  "Conflicts": [],
+  "Assemblies": [
+    "CrossoverPlatforms.dll"
+  ],
+  "Dependencies": [
+    {
+      "ModId": "steam:3542611357",
+      "ModTitle": "Shapez Shifter",
+      "Version": "*-*"
+    }
+  ]
+}

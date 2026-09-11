@@ -1,0 +1,21 @@
+{
+  "Version": "0.1.2",
+  "Title": "Extended Research",
+  "Description": "More research past the vanilla ceiling: further speed, platform capacity and train tiers, plus additional machine and space levels",
+  "Author": "Quinn Bast",
+  "SavedModVersionCompabilityRangeWithSelf": "*-*",
+  "GameVersionSupportRange": "*-*",
+  "AffectsSaveGames": false,
+  "DisablesAchievements": false,
+  "Conflicts": [],
+  "Assemblies": [
+    "ExtendedResearch.dll"
+  ],
+  "Dependencies": [
+    {
+      "ModId": "steam:3542611357",
+      "ModTitle": "Shapez Shifter",
+      "Version": "*-*"
+    }
+  ]
+}

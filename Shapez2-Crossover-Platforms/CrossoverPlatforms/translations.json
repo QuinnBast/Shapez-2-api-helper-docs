@@ -1,0 +1,14 @@
+{
+  "en-US":
+  {
+    "crossover.toolbar.title": "Crossings",
+    "crossover.toolbar.description": "Space platform pieces where two paths cross without interacting.",
+
+    "crossover.group.belt-belt.title": "Belt Crossing",
+    "crossover.group.belt-belt.description": "Two space belts crossing straight through each other. Items stay on the path they entered on.",
+    "crossover.group.belt-pipe.title": "Belt / Pipe Crossing",
+    "crossover.group.belt-pipe.description": "A space belt and a space pipe crossing straight through each other.",
+    "crossover.group.pipe-pipe.title": "Pipe Crossing",
+    "crossover.group.pipe-pipe.description": "Two space pipes crossing straight through each other. Fluids stay on the path they entered on."
+  }
+}

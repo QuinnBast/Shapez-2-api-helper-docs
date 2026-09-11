@@ -1,0 +1,21 @@
+<!--
+    Shared source, not a shared assembly.
+
+        <Import Project="..\..\Shapez2-Toolbar-Kit\ToolbarKit.props" />
+
+    Two copies of one ToolbarKit.dll loaded by two mods into the same AppDomain is a problem
+    nobody needs, and a mod that hard-depends on another mod cannot be installed without it.
+    Compiling the source into each mod avoids both: every mod carries its own private copy of
+    the types, with no load order, no version skew and no dependency to declare in manifest.json.
+
+    Sharing still works where it has to, because the kit keeps no static registry - it matches
+    against the live ToolbarData it is handed. Two mods asking for the same category id get the
+    same category, without either knowing the other exists.
+-->
+<Project>
+
+    <ItemGroup>
+        <Compile Include="$(MSBuildThisFileDirectory)src\**\*.cs" LinkBase="ToolbarKit"/>
+    </ItemGroup>
+
+</Project>

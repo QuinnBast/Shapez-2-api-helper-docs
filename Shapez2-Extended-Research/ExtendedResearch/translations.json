@@ -1,0 +1,16 @@
+{
+  "en-US":
+  {
+    "research.category.ExtendedResearch": "Extended",
+
+    "extended-research.machine-level.title": "Machine Level <level/>",
+    "extended-research.machine-level.description": "Build on a <gl>further layer</gl> inside every platform, up to level <level/>.",
+    "extended-research.machine-level.mechanic.title": "Additional Machine Level",
+    "extended-research.machine-level.mechanic.description": "Raises the <gl>building layer</gl> limit inside a platform.",
+
+    "extended-research.space-level.title": "Space Level <level/>",
+    "extended-research.space-level.description": "Place platforms on a <gl>further layer</gl> in space, up to level <level/>.",
+    "extended-research.space-level.mechanic.title": "Additional Space Level",
+    "extended-research.space-level.mechanic.description": "Raises the <gl>platform layer</gl> limit in space."
+  }
+}

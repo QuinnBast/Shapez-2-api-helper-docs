@@ -1,0 +1,27 @@
+{
+  "_comment": "Rename to config.json to use. Every value below is the built-in default.",
+
+  "ExtraProductionSpeedTiers": 5,
+  "ExtraTrainSpeedTiers": 5,
+  "ExtraTrainCapacityTiers": 3,
+  "ExtraPlatformCapacityTiers": 5,
+  "ExtraHubInputTiers": 0,
+  "ExtraShapeQuantityTiers": 0,
+
+  "ValueStepMultiplier": 1.0,
+  "CostGrowthFactor": 1.6,
+  "FallbackTierCost": 500,
+
+  "ExtraBuildingLayers": 0,
+  "ExtraIslandLayers": 0,
+  "BuildingLayerBaseCost": 2500,
+  "IslandLayerBaseCost": 4000,
+  "LayerCostGrowthFactor": 2.0,
+
+  "ShopCategory": "ExtendedResearch",
+
+  "_overrides_comment": "Per-upgrade tier counts, matched on the linear upgrade id. The log lists every id the mod touched on startup.",
+  "Overrides": [
+    { "UpgradeId": "SomeUpgradeIdFromTheLog", "ExtraTiers": 10 }
+  ]
+}

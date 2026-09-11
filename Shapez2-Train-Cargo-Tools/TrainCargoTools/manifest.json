@@ -1,0 +1,22 @@
+{
+  "Version": "0.10.0",
+  "Version_comment": "Two draggable cargo lines: a belt-tagged one for shapes and a pipe-tagged one for fluids, the latter because a fluid train station will only snap to a pipe connector. Corners chosen automatically. Packagers and unpackagers for both, and detours so every train station accepts cargo packages directly. Adds a Cargo Store that buffers 25 packages per layer, 75 in all, in three independent queues. No lifts yet, so cargo lines cannot cross each other.",
+  "Title": "Train Cargo Tools",
+  "Description": "Pack shapes or fluids into train cargo packages and carry them on cargo belts, so cargo can be buffered outside a train station. Stations accept packages directly.",
+  "Author": "Quinn Bast",
+  "SavedModVersionCompabilityRangeWithSelf": "*-*",
+  "GameVersionSupportRange": "*-*",
+  "AffectsSaveGames": true,
+  "DisablesAchievements": false,
+  "Conflicts": [],
+  "Assemblies": [
+    "TrainCargoTools.dll"
+  ],
+  "Dependencies": [
+    {
+      "ModId": "steam:3542611357",
+      "ModTitle": "Shapez Shifter",
+      "Version": "*-*"
+    }
+  ]
+}
