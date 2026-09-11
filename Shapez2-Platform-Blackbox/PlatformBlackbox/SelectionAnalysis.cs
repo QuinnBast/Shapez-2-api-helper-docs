@@ -8,10 +8,15 @@ using Game.Core.Simulation;
 /// Works out what a selection of platforms looks like from the outside: how big it is, and
 /// which of its ports cross the boundary.
 ///
-/// The boundary is the whole point. Anything wired to another platform inside the selection
-/// is internal detail and can be hidden; anything wired outward - or left unconnected - has
-/// to survive as a port on whatever replaces the selection. That count is what decides
-/// whether a 1x1 platform can stand in for it.
+/// The boundary is the whole point. Anything wired to another platform in the same selection
+/// is internal detail a stand-in can hide; anything reaching outward - or left unconnected -
+/// has to survive as a port on whatever replaces the selection.
+///
+/// Ports are classified by what kind of simulation the game gave them rather than by walking
+/// the connection graph, because the graph does not answer the question. A space belt port's
+/// neighbours are all on its own platform - the hop across space is carried by a separate
+/// path simulation - so asking "does anything it connects to lie outside the selection" says
+/// no, and the port looks internal when it is the most external thing there is.
 /// </summary>
 public class SelectionAnalysis
 {
@@ -19,6 +24,10 @@ public class SelectionAnalysis
     public struct Port
     {
         public GlobalChunkCoordinate Chunk;
+
+        /// The tile the port building sits on, which is what places it within a notch.
+        public GlobalTileCoordinate Tile;
+
         public PortKind Kind;
         public bool Connected;
 
@@ -42,29 +51,37 @@ public class SelectionAnalysis
 
     public readonly List<Port> ExternalPorts = new List<Port>();
 
-    /// Ports that connect to another platform in the same selection - hideable detail.
+    /// Ports joining two platforms that are both selected - hideable detail.
     public int InternalPortCount;
 
     public int ExternalInputs;
     public int ExternalOutputs;
 
     /// <summary>
-    /// A platform can carry four ports per side per building layer. This is the smallest
-    /// square that has room for the ports, ignoring which side each one needs to be on -
-    /// so treat it as a floor, not a promise.
+    /// How the boundary groups into notches, which is what a box has to reproduce. Computed
+    /// on demand, because it walks every port.
     /// </summary>
-    public int SuggestedPlatformSize
+    public NotchGrouping Notches
+    {
+        get { return Grouping ?? (Grouping = NotchGrouping.Of(ExternalPorts)); }
+    }
+
+    private NotchGrouping Grouping;
+
+    /// <summary>
+    /// The smallest platform that could stand in for this selection.
+    ///
+    /// Driven by notches rather than ports: a notch is four tiles wide on each building
+    /// layer, so it holds up to twelve ports, and a platform of w by h chunks offers 2(w+h)
+    /// of them. A wide boundary therefore costs a longer platform, never an impossible one.
+    /// </summary>
+    public string SuggestedPlatform
     {
         get
         {
-            int ports = ExternalPorts.Count;
-            int size = 1;
-            while (ports > size * 4 && size < 8)
-            {
-                size++;
-            }
-
-            return size;
+            int width, height;
+            Notches.SmallestPlatform(out width, out height);
+            return width + "x" + height;
         }
     }
 
@@ -90,56 +107,33 @@ public class SelectionAnalysis
             return analysis;
         }
 
-        List<ILocalizedSimulation> connected = new List<ILocalizedSimulation>();
-
         foreach (ILocalizedSimulation localized in map.Simulator.Simulations)
         {
-            PortKind kind;
-            if (!TryClassifyPort(localized.Simulation, out kind) || localized.NumOccupiedChunks == 0)
+            // The simulator holds every port on the map, so ownership has to be established
+            // before anything else. Every occupied chunk is checked rather than only the
+            // first, because a docked transfer is anchored on the sending platform and would
+            // otherwise be invisible from the receiving side.
+            if (!Touches(localized, map, selected))
             {
                 continue;
             }
 
-            GlobalChunkCoordinate chunk = localized.GetOccupiedChunk(0);
-            if (!map.TryGetIsland(chunk, out IslandModel owner) || !selected.Contains(owner.Id))
+            Port port;
+            bool isInternal;
+            if (!TryClassify(localized, map, selected, out port, out isInternal))
             {
                 continue;
             }
 
-            connected.Clear();
-            map.Simulator.FindAllConnectedSimulations(localized, connected);
-
-            bool leavesSelection = connected.Count == 0;
-            for (int i = 0; i < connected.Count; i++)
-            {
-                ILocalizedSimulation other = connected[i];
-                if (other.NumOccupiedChunks == 0)
-                {
-                    continue;
-                }
-
-                if (!map.TryGetIsland(other.GetOccupiedChunk(0), out IslandModel otherIsland)
-                    || !selected.Contains(otherIsland.Id))
-                {
-                    leavesSelection = true;
-                    break;
-                }
-            }
-
-            if (!leavesSelection)
+            if (isInternal)
             {
                 analysis.InternalPortCount++;
                 continue;
             }
 
-            analysis.ExternalPorts.Add(new Port
-            {
-                Chunk = chunk,
-                Kind = kind,
-                Connected = connected.Count > 0
-            });
+            analysis.ExternalPorts.Add(port);
 
-            if (kind == PortKind.ItemIn || kind == PortKind.FluidIn)
+            if (port.Kind == PortKind.ItemIn || port.Kind == PortKind.FluidIn)
             {
                 analysis.ExternalInputs++;
             }
@@ -153,30 +147,132 @@ public class SelectionAnalysis
     }
 
     /// <summary>
-    /// Ports come as one simulation type per direction and per cargo, and there is no shared
-    /// interface to test against, so they are named individually.
+    /// Decides whether a simulation is a port of this selection, and if so which way it
+    /// faces. There is no shared interface over the port simulations, so each shape the game
+    /// can leave a port in is named.
     /// </summary>
-    private static bool TryClassifyPort(ISimulation simulation, out PortKind kind)
+    private static bool TryClassify(ILocalizedSimulation localized, IMapModel map,
+        HashSet<IslandId> selected, out Port port, out bool isInternal)
     {
-        switch (simulation)
+        port = default(Port);
+        isInternal = false;
+
+        switch (localized.Simulation)
         {
-            case SpaceBeltPortSenderSimulation _:
-            case BeltPortTransferSimulation _:
-                kind = PortKind.ItemOut;
-                return true;
+            // Space ports reach across space by construction, so they always leave the
+            // platform. A space belt joining two selected platforms would be counted here as
+            // external too - following the path to find out is not worth it, and keeping a
+            // port that turns out to be unnecessary is the safe direction to be wrong in.
             case SpaceBeltPortReceiverSimulation _:
-                kind = PortKind.ItemIn;
-                return true;
-            case SpaceFluidPortSenderSimulation _:
-                kind = PortKind.FluidOut;
-                return true;
+                return Describe(localized, PortKind.ItemIn, true, 0, out port);
+            case SpaceBeltPortSenderSimulation _:
+                return Describe(localized, PortKind.ItemOut, true, 0, out port);
             case SpaceFluidPortReceiverSimulation _:
-                kind = PortKind.FluidIn;
-                return true;
+                return Describe(localized, PortKind.FluidIn, true, 0, out port);
+            case SpaceFluidPortSenderSimulation _:
+                return Describe(localized, PortKind.FluidOut, true, 0, out port);
+
+            // A port building whose counterpart is missing. The game still simulates what it
+            // would carry, and a port with nothing on the far side is on the boundary by
+            // definition.
+            case BeltPortSenderBlockedSimulation _:
+                return Describe(localized, PortKind.ItemOut, false, 0, out port);
+            case BeltPortReceiverDisabledSimulation _:
+                return Describe(localized, PortKind.ItemIn, false, 0, out port);
+            case FluidPortBlockedSimulation _:
+                return Describe(localized, PortKind.FluidOut, false, 0, out port);
+            case FluidPortReceiverDisabledSimulation _:
+                return Describe(localized, PortKind.FluidIn, false, 0, out port);
+
+            // A docked transfer is one simulation spanning both platforms, so which end the
+            // selection owns settles both the direction and whether it crosses the boundary.
+            case BeltPortTransferSimulation _:
+                return Docked(localized, map, selected, false, out port, out isInternal);
+            case FluidPortTransferSimulation _:
+                return Docked(localized, map, selected, true, out port, out isInternal);
+
             default:
-                kind = PortKind.ItemIn;
                 return false;
         }
+    }
+
+    private static bool Docked(ILocalizedSimulation localized, IMapModel map,
+        HashSet<IslandId> selected, bool fluid, out Port port, out bool isInternal)
+    {
+        port = default(Port);
+        isInternal = false;
+
+        bool ownsSender = Owns(localized, map, selected, 0);
+        bool ownsReceiver = localized.NumOccupiedChunks > 1
+            ? Owns(localized, map, selected, 1)
+            : ownsSender;
+
+        if (!ownsSender && !ownsReceiver)
+        {
+            return false;
+        }
+
+        if (ownsSender && ownsReceiver)
+        {
+            isInternal = true;
+            return true;
+        }
+
+        // Owning the sending end means items leave the selection here; the tile that matters
+        // is the one on the side the selection owns.
+        PortKind kind = ownsSender
+            ? (fluid ? PortKind.FluidOut : PortKind.ItemOut)
+            : (fluid ? PortKind.FluidIn : PortKind.ItemIn);
+
+        return Describe(localized, kind, true, ownsSender ? 0 : 1, out port);
+    }
+
+    private static bool Touches(ILocalizedSimulation localized, IMapModel map,
+        HashSet<IslandId> selected)
+    {
+        for (int i = 0; i < localized.NumOccupiedChunks; i++)
+        {
+            if (Owns(localized, map, selected, i))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool Owns(ILocalizedSimulation localized, IMapModel map,
+        HashSet<IslandId> selected, int index)
+    {
+        if (index >= localized.NumOccupiedChunks)
+        {
+            return false;
+        }
+
+        return map.TryGetIsland(localized.GetOccupiedChunk(index), out IslandModel owner)
+            && selected.Contains(owner.Id);
+    }
+
+    private static bool Describe(ILocalizedSimulation localized, PortKind kind, bool connected,
+        int end, out Port port)
+    {
+        port = default(Port);
+
+        if (localized.NumOccupiedChunks <= end)
+        {
+            return false;
+        }
+
+        port.Chunk = localized.GetOccupiedChunk(end);
+        port.Kind = kind;
+        port.Connected = connected;
+
+        if (localized is ILocalizedTileSimulation located && located.NumOccupiedTiles > end)
+        {
+            port.Tile = located.GetOccupiedTile(end);
+        }
+
+        return true;
     }
 
     public string Describe()
@@ -200,8 +296,15 @@ public class SelectionAnalysis
             text.Append(" (").Append(InternalPortCount).Append(" internal ports would be hidden)");
         }
 
-        text.Append("\nsmallest platform with room for those ports: ")
-            .Append(SuggestedPlatformSize).Append("x").Append(SuggestedPlatformSize);
+        text.Append("\nacross ").Append(Notches.NotchCount)
+            .Append(Notches.NotchCount == 1 ? " notch" : " notches");
+
+        if (Notches.Unplaced > 0)
+        {
+            text.Append(" (").Append(Notches.Unplaced).Append(" not on a notch)");
+        }
+
+        text.Append("\nsmallest platform with room for those notches: ").Append(SuggestedPlatform);
 
         return text.ToString();
     }

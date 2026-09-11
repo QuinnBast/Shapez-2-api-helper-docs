@@ -1,11 +1,11 @@
 {
-  "Version": "0.1.0",
+  "Version": "0.2.0",
   "Title": "Platform Blackbox",
   "Description": "Collapse a selection of platforms into a reusable blueprint, and see what crosses its boundary",
   "Author": "Quinn Bast",
-  "SavedModVersionCompabilityRangeWithSelf": "*-*",
+  "SavedModVersionCompabilityRangeWithSelf": "0.2.0-*",
   "GameVersionSupportRange": "*-*",
-  "AffectsSaveGames": false,
+  "AffectsSaveGames": true,
   "DisablesAchievements": false,
   "Conflicts": [],
   "Assemblies": [
