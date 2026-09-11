@@ -1,0 +1,26 @@
+{
+  "Version": "0.1.0",
+  "Title": "Mod Reloader (dev tool)",
+  "Description": "Reloads another mod's assembly in place, so iterating does not need a game restart",
+  "Author": "Quinn Bast",
+  "SavedModVersionCompabilityRangeWithSelf": "*-*",
+  "GameVersionSupportRange": "*-*",
+  "AffectsSaveGames": false,
+  "DisablesAchievements": false,
+  "Conflicts": [],
+  "Assemblies": [
+    "ModReloader.dll"
+  ],
+  "Dependencies": [
+    {
+      "ModId": "steam:3542611357",
+      "ModTitle": "Shapez Shifter",
+      "Version": "*-*"
+    },
+    {
+      "ModId": "steam:3542712030",
+      "ModTitle": "MonoMod.RuntimeDetour",
+      "Version": "*-*"
+    }
+  ]
+}

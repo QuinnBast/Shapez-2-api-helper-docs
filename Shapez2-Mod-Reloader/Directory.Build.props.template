@@ -1,0 +1,28 @@
+<!--
+    Drop this file next to your .sln, renamed to Directory.Build.props, and MSBuild imports
+    it automatically - no csproj edits.
+
+    It adds one build mode:
+
+        dotnet build -p:Dev=true
+
+    which writes to <persistent>/mods-dev/<ProjectName>/ instead of into the mods folder.
+    The installed copy is memory-mapped by the running game and cannot be overwritten, so a
+    normal build cannot produce anything new to reload. Mod discovery only scans immediate
+    subdirectories of "mods", so a staged build is never loaded as a second mod.
+
+    Mod Reloader prefers the staged build when it finds one:  mrl.reload <yourmod>
+
+    The first build of a brand new mod has nothing installed beside it to reload. Mod
+    Reloader copies a staged build into the mods folder at startup when there is no
+    installed copy, so the next launch loads it as an ordinary mod - manifest and dependency
+    checks included - and it is reloadable from then on.
+-->
+<Project>
+
+    <PropertyGroup Condition="'$(Dev)' == 'true' And '$(SPZ2_PERSISTENT)' != ''">
+        <OutputPath>$(SPZ2_PERSISTENT)\mods-dev\$(MSBuildProjectName)\</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+</Project>

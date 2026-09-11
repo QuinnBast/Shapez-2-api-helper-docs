@@ -1,0 +1,20 @@
+{
+  "en-US": {
+    "island-group.BlackboxGroup.title": "Blackbox 1x1",
+    "island-group.BlackboxGroup.description": "A factory reduced to what it does. Four notches.",
+    "island-group.Blackbox2x2Group.title": "Blackbox 2x2",
+    "island-group.Blackbox2x2Group.description": "A factory reduced to what it does. Eight notches.",
+    "island-group.Blackbox3x3Group.title": "Blackbox 3x3",
+    "island-group.Blackbox3x3Group.description": "A factory reduced to what it does. Twelve notches.",
+    "island-group.Blackbox4x4Group.title": "Blackbox 4x4",
+    "island-group.Blackbox4x4Group.description": "A factory reduced to what it does. Sixteen notches.",
+    "island.Blackbox2x2.title": "Blackbox 2x2",
+    "island.Blackbox2x2.description": "Items pass straight through, transformed as the factory it replaces would have.",
+    "island.Blackbox3x3.title": "Blackbox 3x3",
+    "island.Blackbox3x3.description": "Items pass straight through, transformed as the factory it replaces would have.",
+    "island.Blackbox4x4.title": "Blackbox 4x4",
+    "island.Blackbox4x4.description": "Items pass straight through, transformed as the factory it replaces would have.",
+    "island.Blackbox.title": "Blackbox 1x1",
+    "island.Blackbox.description": "Items pass straight through, transformed as the factory it replaces would have."
+  }
+}
