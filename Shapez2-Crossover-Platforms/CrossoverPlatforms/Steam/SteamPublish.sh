@@ -184,3 +184,13 @@ echo
 echo "Check $HOME/steamcmd/logs/workshop_log.txt for what was actually uploaded."
 echo "A run that changed the files says 'Uploaded new content ( ManifestID ... )'."
 echo "Without that line only the preview and the text changed."
+
+# The category checkboxes are Workshop tags, and workshop_build_item has no key for them -
+# it reads appid, publishedfileid, filetype, title, description, visibility, previewfile,
+# contentfolder, kvtags and changenote, and nothing else. A "tags" block in base.vdf is an
+# unknown key that the KeyValues parser silently drops, and kvtags is AddItemKeyValueTag -
+# API metadata, not the categories. Set them on the page below; because nothing here calls
+# SetItemTags, later publishes leave them alone.
+echo
+echo "Item page: https://steamcommunity.com/sharedfiles/filedetails/?id=$FILE_ID"
+echo "Categories and extra screenshots are set there, not from this script."
