@@ -43,9 +43,10 @@ MyMod/
     "publishedfileid" "0"
     "contentfolder" "${CONTENT_PATH}"
     "previewfile" "${PREVIEW_IMG}"
-    "visibility" "0"
+    "visibility" "2"
     "title" "My Mod"
     "description" "What the mod does"
+    "changenote" "${CHANGE_NOTE}"
 }
 ```
 
@@ -56,9 +57,26 @@ MyMod/
 | `contentfolder` | absolute path to your built mod folder — filled in by the script |
 | `previewfile` | absolute path to the thumbnail — filled in by the script |
 | `visibility` | `0` public, `1` friends only, `2` private, `3` unlisted |
+| `changenote` | optional; the line shown in the item's change history |
 
 Start with `visibility "2"` while testing. A half-broken public item collects
 one-star ratings faster than you can fix it.
+
+Substitute `changenote` rather than hard-coding it. `base.vdf` is a checked-in
+template that every publish reuses, so a literal note would claim the same change
+on every future update — export `CHANGE_NOTE` beside `CONTENT_PATH` and let
+`envsubst` fill it, or leave the key out entirely.
+
+### The manifest carries exactly one image
+
+`previewfile` is the thumbnail, and it is the only image `workshop_build_item`
+understands. Additional screenshots and videos cannot be uploaded from the command
+line at all — they are added in the item's web interface after it exists. The
+Steamworks API does expose `ISteamUGC::AddItemPreviewFile` for extra previews, but
+steamcmd does not surface it, so there is nothing to put in the manifest.
+
+Plan for that: the first publish creates an item with one image, and the rest of the
+store page is filled in on the website.
 
 ## How the script works
 
