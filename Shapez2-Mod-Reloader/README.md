@@ -1,4 +1,4 @@
-# Mod Reloader
+﻿# Mod Reloader
 
 A development tool. Rebuild a mod, run one console command, and its new code runs — no game
 restart.
@@ -16,20 +16,43 @@ In the debug console (**F1**):
 | | |
 |---|---|
 | `mrl.list` | every loaded mod, with every name `mrl.reload` will accept |
-| `mrl.reload <name>` | dispose that mod and run its rebuilt assembly |
+| `mrl.reload <name>` | save, run that mod's rebuilt assembly, and rebuild the session |
+| `mrl.watch` | reload by itself whenever a staged build changes (toggle) |
 | `mrl.run <command>` | run another command, print it, and copy its output to the clipboard |
-| `mrl.copy` | put the last captured output on the clipboard again |
+| `mrl.copy` | copy the last command's output, whatever command it was |
 | `mrl.paste` | run whatever is on the clipboard as a console command |
 | `mrl.seed` | install any staged build that has no installed copy yet |
 
-`mrl.reload` also puts the new code back in front of the session callbacks that only fire
-once at init - console commands and side-panel modules - which no mod can do for itself.
-Without that a reloaded mod's commands keep answering from the disposed instance.
+`mrl.reload` saves the game, swaps the code, and then rebuilds the game session by
+re-entering that save. The rebuild is what makes new *content* appear: buildings and
+islands are baked in `GameMode.From`, meshes and animations into the session's own
+`MeshCache`, the toolbar in `ToolbarBuilder.BuildToolbar`, panels and commands in the
+orchestrator's `Init_` steps - all per session, from the vanilla baseline, with Shifter's
+interceptors consulting your mod on the way past. Swapping the assembly alone cannot touch
+any of it, because it was already built by the old code.
+
+The save has to come first: the old instance is the only code that can still write its own
+save data, and without it everything since the last save would be rolled back by the reload
+that follows. If there is no session to rebuild - the main menu's background map, or a save
+that would not write - the reload stays a code-only one and says so, and then puts the new
+code back in front of the session callbacks that only fire once at init, which no mod can
+do for itself. Without that a reloaded mod's commands keep answering from the disposed
+instance.
+
+`mrl.watch` runs that loop for you: it watches the staged build folder and reloads whatever
+was rebuilt, so a `dotnet build -p:Dev=true` in another window is the whole gesture. A build
+is several writes, so a change only counts once the folder has been quiet for a moment; a
+solution-wide build that stages every mod is one save and one session rebuild, not one per
+mod. The report goes to `Player.log`, and stays on `mrl.copy` - the rebuilt session takes
+the console's history with it.
 
 The clipboard commands exist because the in-game console cannot be selected from, so
 anything worth reading is trapped there. `mrl.run peo.types` runs that command and leaves
-its output on your clipboard. Everything these commands print is mirrored into
-`Player.log` as well, so output survives even if the clipboard is unavailable.
+its output on your clipboard. `mrl.copy` does the same afterwards for whatever you ran
+last - including the game's own commands and other mods' - so output only worth keeping
+once you have seen it does not have to be produced twice. Everything these commands print
+is mirrored into `Player.log` as well, so output survives even if the clipboard is
+unavailable.
 
 The name matches loosely against the mod's title and folder, and refuses ambiguous matches
 so a typo cannot reload the wrong thing. The loop becomes:
@@ -87,11 +110,14 @@ the installed folder says so outright rather than appearing to work.
 
 `ModLoader.LoadMods()` throws on a second call — *"Trying to load mods multiple times. This
 is not supported"* — and mods are loaded with `Assembly.LoadFrom`. In Unity's Mono runtime
-an assembly loaded that way can never be unloaded, and calling `LoadFrom` again on the same
-path returns the assembly already in memory rather than reading the file.
+an assembly loaded that way can never be unloaded, and `LoadFrom` binds by assembly
+*identity* — name, version, culture, public key — not by path. A rebuilt mod keeps the same
+identity, so `LoadFrom` returns the copy already in memory and never reads the new file, no
+matter what path it is given.
 
-So this tool copies the mod's folder to a fresh path under a new name each time. The runtime
-treats that as a different assembly and genuinely reads the new bytes.
+So this tool reads the rebuilt DLL into a byte array and loads it with `Assembly.Load(byte[])`.
+That overload has no identity/path context: it takes the raw image and genuinely reads the
+new bytes as a distinct assembly every time, even when the identity is unchanged.
 
 ## What that costs
 

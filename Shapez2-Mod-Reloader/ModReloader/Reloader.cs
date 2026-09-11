@@ -9,12 +9,21 @@ using ILogger = Core.Logging.ILogger;
 using PrefixedLogger = Core.Logging.PrefixedLogger;
 
 /// <summary>
-/// Swaps a mod's running code for a freshly built assembly, without restarting the game.
+/// Swaps a mod's running code for a freshly built assembly and rebuilds the game session
+/// around it, without restarting the game.
+///
+/// The session rebuild is what makes a reload cover new content - toolbars, panels,
+/// islands, meshes - rather than only new code; see <see cref="SessionRecycler"/> for why
+/// none of that can be swapped in place.
 ///
 /// The awkward part is that an assembly loaded into Unity's Mono runtime can never be
-/// unloaded, and `Assembly.LoadFrom` on a path that is already loaded hands back the old
-/// assembly rather than reading the file again. So each reload copies the DLL to a new
-/// path under a unique name, which the runtime treats as a genuinely different assembly.
+/// unloaded, and the game loads mods with `Assembly.LoadFrom`, which binds by assembly
+/// identity - name, version, culture, public key - rather than by path. A rebuilt mod
+/// keeps the same identity (nothing bumps the version between builds), so `LoadFrom`
+/// returns the copy already in memory and never reads the new file, whatever path it is
+/// handed. So each reload instead reads the rebuilt DLL into a byte array and loads it
+/// with `Assembly.Load(byte[])`, which has no such context and always produces a
+/// genuinely distinct assembly from the new bytes.
 ///
 /// The consequences are unavoidable rather than incidental, and worth knowing:
 ///
@@ -30,45 +39,161 @@ public class Reloader
     private readonly ILogger Logger;
     private readonly ModRegistry Registry;
     private readonly SessionRewiring Rewiring;
+    private readonly SessionRecycler Recycler;
 
-    /// One shadow directory per session, cleared on the first reload.
-    private readonly string ShadowRoot;
     private int Generation;
 
-    public Reloader(ILogger logger, ModRegistry registry, SessionRewiring rewiring)
+    public Reloader(ILogger logger, ModRegistry registry, SessionRewiring rewiring,
+        SessionRecycler recycler)
     {
         Logger = logger;
         Registry = registry;
         Rewiring = rewiring;
-        ShadowRoot = Path.Combine(Path.GetTempPath(), "spz2-mod-reloader");
+        Recycler = recycler;
     }
 
+    /// <summary>A mod that can be reloaded, resolved before anything is disposed.</summary>
+    private class Target
+    {
+        public readonly ResolvedMod Resolved;
+        public readonly ExecutableMod Executable;
+
+        public Target(ResolvedMod resolved, ExecutableMod executable)
+        {
+            Resolved = resolved;
+            Executable = executable;
+        }
+    }
+
+    /// <summary>The pair of assemblies a swap produced, for the rewiring fallback.</summary>
+    private class Swapped
+    {
+        public readonly Assembly Previous;
+        public readonly Assembly Current;
+
+        public Swapped(Assembly previous, Assembly current)
+        {
+            Previous = previous;
+            Current = current;
+        }
+    }
+
+    /// <summary>One mod by name - the everyday case of the batch below.</summary>
     public IEnumerable<string> Reload(string name)
     {
-        List<string> report = new List<string>();
+        return Reload(new List<string> { name });
+    }
 
-        if (!Registry.TryFind(name, out ResolvedMod resolved, out ExecutableMod executable, out string problem))
+    /// <summary>
+    /// Swaps each named mod's code, then rebuilds the session so the new code's content
+    /// takes effect.
+    ///
+    /// The save and the session reload straddle the swap, and have to: the old instance is
+    /// the only code that can still write its own save data, and the new session has to be
+    /// built by the new code. Everything is resolved before either, so a mistyped name
+    /// costs nothing.
+    ///
+    /// A batch saves once and rebuilds the session once, however many mods it covers,
+    /// because a solution-wide build stages all of them at the same moment.
+    /// </summary>
+    public IEnumerable<string> Reload(IList<string> names)
+    {
+        List<string> report = new List<string>();
+        List<Target> targets = new List<Target>();
+
+        foreach (string name in names)
+        {
+            if (TryResolve(name, report, out Target target))
+            {
+                targets.Add(target);
+            }
+        }
+
+        if (targets.Count == 0)
+        {
+            return report;
+        }
+
+        SessionRecycler.Handle saved = Recycler.TrySave(report);
+        List<Swapped> swapped = new List<Swapped>();
+
+        foreach (Target target in targets)
+        {
+            if (Swap(target, report, out Swapped result))
+            {
+                swapped.Add(result);
+            }
+        }
+
+        if (swapped.Count == 0)
+        {
+            report.Add("Nothing was reloaded, so the session is left as it is.");
+            return report;
+        }
+
+        if (saved != null && Recycler.TryReload(saved, report))
+        {
+            // Nothing left for SessionRewiring to replay: the rebuilt session runs every
+            // one-shot init callback again, which is the whole point of rebuilding it.
+            report.Add("Reloaded. Anything an old instance did not undo in Dispose now exists twice,");
+            report.Add("and the rebuilt session applies it a second time.");
+            return report;
+        }
+
+        // No session was rebuilt, so the callbacks that only fire at init have been and
+        // gone. Put the new code back in front of them by hand instead.
+        foreach (Swapped result in swapped)
+        {
+            Rewiring.Replay(result.Previous, result.Current, report);
+        }
+
+        report.Add("Reloaded code only - new content (toolbars, panels, islands, meshes) appears");
+        report.Add("when the session is next built.");
+        return report;
+    }
+
+    /// <summary>
+    /// Finds a named mod and rules out what cannot be reloaded at all - before the save,
+    /// so that none of those cases can cost a session rebuild.
+    /// </summary>
+    private bool TryResolve(string name, List<string> report, out Target target)
+    {
+        target = null;
+
+        if (!Registry.TryFind(name, out ResolvedMod resolved, out ExecutableMod executable,
+                out string problem))
         {
             report.Add(problem);
-            return report;
+            return false;
         }
 
-        Type oldEntry = executable.EntryPoint.GetType();
-
-        if (oldEntry.Assembly == typeof(Reloader).Assembly)
+        if (executable.EntryPoint.GetType().Assembly == typeof(Reloader).Assembly)
         {
             report.Add("Refusing to reload the reloader - that would dispose the code doing the reloading.");
-            return report;
+            return false;
         }
+
+        if ((resolved.Metadata.Assemblies ?? Array.Empty<string>()).Length == 0)
+        {
+            report.Add(resolved.Descriptor.ModTitle + " declares no assemblies to reload.");
+            return false;
+        }
+
+        target = new Target(resolved, executable);
+        return true;
+    }
+
+    /// <summary>Replaces one mod's running code with its rebuilt assembly.</summary>
+    private bool Swap(Target target, List<string> report, out Swapped swapped)
+    {
+        swapped = null;
+
+        ResolvedMod resolved = target.Resolved;
+        ExecutableMod executable = target.Executable;
+        Assembly previous = executable.EntryPoint.GetType().Assembly;
 
         string[] assemblies = resolved.Metadata.Assemblies ?? Array.Empty<string>();
         string directory = ResolveSource(resolved, report);
-
-        if (assemblies.Length == 0)
-        {
-            report.Add("That mod declares no assemblies to reload.");
-            return report;
-        }
 
         Generation++;
         report.Add("Reloading " + resolved.Descriptor.ModTitle + " (generation " + Generation + ")");
@@ -86,28 +211,21 @@ public class Reloader
             report.Add("  the old entry point threw while disposing - see the log; continuing");
         }
 
-        // 2. Copy to a path the runtime has not seen, so the new bytes are actually read.
-        string shadow;
-        try
-        {
-            shadow = Path.Combine(ShadowRoot, Generation.ToString());
-            Directory.CreateDirectory(shadow);
-
-            foreach (string file in Directory.GetFiles(directory))
-            {
-                File.Copy(file, Path.Combine(shadow, Path.GetFileName(file)), overwrite: true);
-            }
-
-            report.Add("  copied " + assemblies.Length + " assembly file(s) to a fresh path");
-        }
-        catch (Exception exception)
-        {
-            Logger.Exception?.LogException(exception);
-            report.Add("  could not shadow-copy the mod - see the log. The old instance is now disposed.");
-            return report;
-        }
-
-        // 3. Load and find the single IMod, the same way the game does.
+        // 2. Load and find the single IMod.
+        //
+        //    NOT with Assembly.LoadFrom, which the game uses and which is exactly what makes
+        //    a second load impossible: LoadFrom binds by assembly identity - name, version,
+        //    culture, public key - not by path. A rebuilt mod keeps the same identity
+        //    (nothing bumps the assembly version between builds), so LoadFrom finds the
+        //    original already in memory and hands it straight back, reading nothing. The
+        //    reload would then reconstruct the *old* type and re-register the old code,
+        //    which looks exactly like "the new version did not load".
+        //
+        //    Assembly.Load(byte[]) has no such context: it takes the raw image and always
+        //    produces a genuinely distinct assembly, even when the identity is unchanged.
+        //    Reading the bytes ourselves also sidesteps the file lock - the installed copy
+        //    is memory-mapped and cannot be overwritten, but it can still be read, and a
+        //    staged mods-dev build is not locked at all.
         Type bootstrap;
         try
         {
@@ -115,7 +233,8 @@ public class Reloader
 
             foreach (string assemblyName in assemblies)
             {
-                Assembly loaded = Assembly.LoadFrom(Path.Combine(shadow, assemblyName));
+                byte[] image = File.ReadAllBytes(Path.Combine(directory, assemblyName));
+                Assembly loaded = Assembly.Load(image);
                 types.AddRange(LoadableTypes(loaded));
             }
 
@@ -126,7 +245,7 @@ public class Reloader
             if (entries.Count != 1)
             {
                 report.Add("  expected exactly one IMod implementation, found " + entries.Count);
-                return report;
+                return false;
             }
 
             bootstrap = entries[0];
@@ -135,10 +254,10 @@ public class Reloader
         {
             Logger.Exception?.LogException(exception);
             report.Add("  could not load the rebuilt assembly - see the log.");
-            return report;
+            return false;
         }
 
-        // 4. Construct it exactly as ModLoader does: a container with ILogger bound.
+        // 3. Construct it exactly as ModLoader does: a container with ILogger bound.
         try
         {
             string prefix = resolved.Descriptor.ModId + "[" + resolved.Metadata.Version + "]";
@@ -156,16 +275,11 @@ public class Reloader
         {
             Logger.Exception?.LogException(exception);
             report.Add("  the new entry point threw while constructing - see the log. That mod is now not running.");
-            return report;
+            return false;
         }
 
-        // 5. Put it back in front of the session callbacks that have already run. Without
-        //    this its console commands are still the old instance's, answering out of
-        //    state that was cleared when the old instance was disposed.
-        Rewiring.Replay(oldEntry.Assembly, bootstrap.Assembly, report);
-
-        report.Add("Reloaded. Anything the old instance did not undo in Dispose now exists twice.");
-        return report;
+        swapped = new Swapped(previous, bootstrap.Assembly);
+        return true;
     }
 
     /// <summary>
@@ -184,7 +298,7 @@ public class Reloader
         string folder = Path.GetFileName(
             installed.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
-        string staged = Path.Combine(GameEnvironment.DataPath, "mods-dev", folder);
+        string staged = Path.Combine(StagedBuildWatcher.Root, folder);
 
         if (Directory.Exists(staged))
         {

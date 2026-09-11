@@ -1,6 +1,7 @@
 ﻿using System;
 using JetBrains.Annotations;
 using MonoMod.RuntimeDetour;
+using ShapezShifter.Flow;
 using ShapezShifter.Hijack;
 using ShapezShifter.SharpDetour;
 using ILogger = Core.Logging.ILogger;
@@ -25,6 +26,9 @@ public class ModReloaderMod : IMod
     private readonly Hook BuildingModulesHook;
     private readonly RewirerHandle CommandsHandle;
     private readonly Seeder Seed;
+    private readonly ConsoleTap Tap;
+    private readonly StagedBuildWatcher Watcher;
+    private readonly RewirerHandle WatchHandle;
 
     private bool Seeded;
 
@@ -47,10 +51,22 @@ public class ModReloaderMod : IMod
 
         Seed = new Seeder(logger, Registry);
 
-        CommandsHandle = GameRewirers.AddRewirer(
-            new ReloaderCommands(logger, Registry, new Reloader(logger, Registry, Rewiring), Seed));
+        // Hooked here rather than when the commands are registered: the console is built
+        // once per session, and the tap has to be in place before the first command runs.
+        Tap = new ConsoleTap(logger);
 
-        Logger.Info?.Log("Mod Reloader ready - mrl.list, then mrl.reload <name> (F1).");
+        Reloader reloader = new Reloader(logger, Registry, Rewiring, new SessionRecycler(logger, Registry));
+        Watcher = new StagedBuildWatcher(logger, reloader, Tap);
+
+        // The watcher's file events arrive on a thread pool thread, where nothing may
+        // touch Unity. This is the main thread it hands the work over to; it ticks only
+        // while a session is running, which is also the only time there is one to rebuild.
+        WatchHandle = this.OnTick(Watcher.Pump);
+
+        CommandsHandle = GameRewirers.AddRewirer(
+            new ReloaderCommands(logger, Registry, reloader, Seed, Tap, Watcher));
+
+        Logger.Info?.Log("Mod Reloader ready - mrl.list, then mrl.reload <name>, or mrl.watch (F1).");
     }
 
     private void OnSessionReady(GameSessionOrchestrator orchestrator, IslandsModulesLookup lookup)
@@ -97,6 +113,9 @@ public class ModReloaderMod : IMod
     public void Dispose()
     {
         GameRewirers.RemoveRewirer(CommandsHandle);
+        GameRewirers.RemoveRewirer(WatchHandle);
+        Watcher?.Dispose();
+        Tap?.Dispose();
         BuildingModulesHook?.Dispose();
         SessionHook?.Dispose();
     }

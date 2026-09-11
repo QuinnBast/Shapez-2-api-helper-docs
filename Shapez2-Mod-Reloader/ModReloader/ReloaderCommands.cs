@@ -10,7 +10,9 @@ using ILogger = Core.Logging.ILogger;
 ///
 /// Includes the clipboard commands, which exist because there is no way to select text in
 /// the in-game console - so any command that prints something worth keeping is unreadable
-/// outside the game. <c>mrl.run</c> runs another command and captures what it printed.
+/// outside the game. <c>mrl.run</c> runs another command and captures what it printed;
+/// <c>mrl.copy</c> copies what the last command printed, whether or not it was run that
+/// way, which is what <see cref="ConsoleTap"/> is for.
 /// </summary>
 public class ReloaderCommands : IConsoleRewirer
 {
@@ -20,16 +22,18 @@ public class ReloaderCommands : IConsoleRewirer
     private readonly ModRegistry Registry;
     private readonly Reloader Reloader;
     private readonly Seeder Seeder;
+    private readonly ConsoleTap Tap;
+    private readonly StagedBuildWatcher Watcher;
 
-    /// The last output captured by mrl.run, so mrl.copy can put it back on the clipboard.
-    private string LastCaptured = string.Empty;
-
-    public ReloaderCommands(ILogger logger, ModRegistry registry, Reloader reloader, Seeder seeder)
+    public ReloaderCommands(ILogger logger, ModRegistry registry, Reloader reloader, Seeder seeder,
+        ConsoleTap tap, StagedBuildWatcher watcher)
     {
         Logger = logger;
         Registry = registry;
         Reloader = reloader;
         Seeder = seeder;
+        Tap = tap;
+        Watcher = watcher;
     }
 
     public void RegisterCommands(IDebugConsole console)
@@ -38,6 +42,10 @@ public class ReloaderCommands : IConsoleRewirer
 
         Register(console, "reload", new DebugConsole.StringOption("mod"),
             context => Emit(context, Reloader.Reload(context.GetString(0))));
+
+        // Toggled rather than started: there is no way to pass a flag, and leaving a
+        // watcher running for the rest of the session is not always what you want.
+        Register(console, "watch", null, context => Emit(context, Watcher.Toggle()));
 
         // Runs at startup too; this is for when a staged build appears mid-session.
         Register(console, "seed", null, context => Emit(context, Seeder.Seed()));
@@ -58,10 +66,9 @@ public class ReloaderCommands : IConsoleRewirer
                 captured.Add("\"" + command + "\" threw - see the log.");
             }
 
-            LastCaptured = string.Join(Environment.NewLine, captured.ToArray());
             Emit(context, captured);
 
-            if (TrySetClipboard(LastCaptured, out string problem))
+            if (TrySetClipboard(string.Join(Environment.NewLine, captured.ToArray()), out string problem))
             {
                 context.Output?.Invoke("[" + captured.Count + " lines copied to the clipboard]");
             }
@@ -71,17 +78,22 @@ public class ReloaderCommands : IConsoleRewirer
             }
         });
 
+        // Copies the last command's output, so a command only worth keeping once it has
+        // been seen does not have to be run a second time through mrl.run.
         Register(console, "copy", null, context =>
         {
-            if (string.IsNullOrEmpty(LastCaptured))
+            List<string> captured = Tap.LastOutput();
+
+            if (captured.Count == 0)
             {
-                context.Output?.Invoke("Nothing captured yet. Run a command through mrl.run first.");
+                context.Output?.Invoke("Nothing to copy - the last command printed nothing.");
                 return;
             }
 
-            context.Output?.Invoke(TrySetClipboard(LastCaptured, out string problem)
-                ? "Copied the last captured output to the clipboard."
-                : "Clipboard unavailable: " + problem);
+            context.Output?.Invoke(
+                TrySetClipboard(string.Join(Environment.NewLine, captured.ToArray()), out string problem)
+                    ? "[" + captured.Count + " lines copied to the clipboard]"
+                    : "Clipboard unavailable: " + problem + " - the lines are in Player.log.");
         });
 
         // The console has no paste either, so this runs whatever is on the clipboard -

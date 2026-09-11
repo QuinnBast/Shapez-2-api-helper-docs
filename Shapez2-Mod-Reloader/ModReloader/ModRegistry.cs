@@ -80,6 +80,17 @@ public class ModRegistry
     }
 
     /// <summary>
+    /// The live session, which <see cref="SessionRecycler"/> needs in order to save it and
+    /// re-enter it. Held rather than resolved, because the orchestrator is what hands out
+    /// everything else - including the navigator that replaces it.
+    /// </summary>
+    public bool TryGetSession(out GameSessionOrchestrator orchestrator)
+    {
+        orchestrator = Orchestrator;
+        return orchestrator != null;
+    }
+
+    /// <summary>
     /// Whether a mod built around the named assembly is already running, and from where.
     /// </summary>
     public bool TryGetRunningAssembly(string assemblyName, out string directory)
