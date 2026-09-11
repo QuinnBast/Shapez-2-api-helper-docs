@@ -1,0 +1,26 @@
+{
+  "Version": "1.1.0",
+  "Title": "Platform Efficiency Viewer",
+  "Description": "Shows measured throughput, bottlenecks and history for every machine, belt and platform",
+  "Author": "Quinn Bast",
+  "SavedModVersionCompabilityRangeWithSelf": "*-*",
+  "GameVersionSupportRange": "*-*",
+  "AffectsSaveGames": false,
+  "DisablesAchievements": false,
+  "Conflicts": [],
+  "Assemblies": [
+    "PlatformEfficiencyOverlay.dll"
+  ],
+  "Dependencies": [
+    {
+      "ModId": "steam:3542611357",
+      "ModTitle": "Shapez Shifter",
+      "Version": "*-*"
+    },
+    {
+      "ModId": "steam:3542712030",
+      "ModTitle": "MonoMod.RuntimeDetour",
+      "Version": "*-*"
+    }
+  ]
+}
