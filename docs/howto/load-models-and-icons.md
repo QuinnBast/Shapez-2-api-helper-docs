@@ -21,6 +21,30 @@ string meshPath = resources.SubPath("MyCutter.fbx");
 wherever the player's mod folder is. Never build paths from `SPZ2_PERSISTENT` at runtime
 — that is a build-time variable.
 
+> [!WARNING]
+> **This throws under a hot-reloader.** `CreateLocator<T>()` is
+> `Directory.GetParent(typeof(T).Assembly.Location)`, and a reloader has to load with
+> `Assembly.Load(byte[])` — `LoadFrom` binds by assembly identity and would just hand back
+> the copy already loaded, which is precisely why the byte-array overload is needed. An
+> assembly with no file behind it reports `Location == ""`, so `GetParent("")` throws
+> `ArgumentException: Path cannot be the empty string`. The throw lands in your mod's
+> constructor, so the reload reports the mod as dead with no obvious cause.
+>
+> This affects **every mod that loads an icon off disk**, which is every mod with a
+> toolbar entry. Guard it:
+>
+> ```csharp
+> string location = typeof(MyMod).Assembly.Location;
+> ModFolderLocator resources = !string.IsNullOrEmpty(location)
+>     ? ModDirectoryLocator.CreateLocator<MyMod>().SubLocator("Resources")
+>     : new ModFolderLocator(Path.Combine(
+>         Application.persistentDataPath, "mods-dev", "MyMod")).SubLocator("Resources");
+> ```
+>
+> `Application.persistentDataPath` is the same folder `SPZ2_PERSISTENT` points at, and is
+> safe to read at runtime — unlike the build-time variable. Prefer `mods-dev` over `mods`
+> in the fallback, since that is where a reloader stages from.
+
 Copy resources to the output:
 
 ```xml

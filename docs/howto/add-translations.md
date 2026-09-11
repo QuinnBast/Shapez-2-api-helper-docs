@@ -91,6 +91,35 @@ Descriptions accept the game's inline tags — `<gl>…</gl>` in the sample high
 term. Copy the tags vanilla uses for the same kind of emphasis rather than inventing
 formatting.
 
+## Placeholders: bind values with `RawText`, never `.T()`
+
+A key with a self-closing placeholder is filled in with `Bind`:
+
+```json
+"my-mod.store.layer": "Layer <layer/>"
+```
+
+```csharp
+"my-mod.store.layer".T().Bind("layer", new RawText(n.ToString()))
+```
+
+`Bind` takes an `IText`, and the obvious-looking way to make one is `.T()` — which is
+wrong. `.T()` builds a `LazyLocalizedText`: it treats the string as a **translation id**.
+So `n.ToString().T()` asks the resolver for a key named `"1"`, the lookup fails, and
+`LazyLocalizedText.Build` emits its miss marker:
+
+```csharp
+sb.Append("?");
+sb.Append(Id.Id);      // renders "?1"
+```
+
+The symptom is a stray `?` in front of the value — `Layer ?1`. Use `RawText`, the
+plain-text `IText`, for anything that is already literal: numbers, names, values read
+from simulation state.
+
+A `?` prefix anywhere in the UI means the same thing — something was treated as a
+translation id and not found.
+
 ## Gotchas
 
 - A missing key renders as the raw key. That is your signal the file did not copy, the

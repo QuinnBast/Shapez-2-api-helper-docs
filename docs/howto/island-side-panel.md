@@ -142,15 +142,80 @@ roughly a twelfth of its real flow.
 `OnUpdate`, but that only animates the tutorial highlight — `GetContent` is called once
 when the stat is assigned.
 
-So a number in a text module is a snapshot from when the panel opened. The efficiency gauge
-is the only stock module that keeps measuring, which is a good reason to reuse it rather
-than format your own string.
+So a number in a text module is a snapshot from when the panel opened. Assigning a
+live-computing `IText` does not help either: `HUDLocalizedText.Text` only rebuilds when
+the `IText` **object** differs (`if (!object.Equals(value, _Text))`), and the module
+assigns it once.
+
+Three stock modules do keep polling, and between them they cover most needs:
+
+| Module | Polls | Renders |
+| --- | --- | --- |
+| `HUDSidePanelModuleBuildingEfficiency` | its hooked lane | needle + percentage |
+| `HUDSidePanelModuleRocketProgress` | two `Func<float>` | fill bar + percentage |
+| `HUDSidePanelModuleBeltItemContents` | a `Func<IEnumerable<IBeltItem>>` | item icons in fixed slots |
+
+**`HUDSidePanelModuleRocketProgress` is misnamed.** Its prefab reference is
+`HUDSidePanelModulesResources.GenericProgress`; the converter is just its only vanilla
+user, for rocket progress. It is the generic current-versus-maximum bar, and the right
+choice for a buffer, a queue, or anything with a capacity:
+
+```csharp
+yield return new HUDSidePanelModuleRocketProgress.Data(
+    icon,
+    "my-mod.buffer".T(),
+    Color.cyan,
+    () => store.Count,        // called every frame
+    () => store.Capacity);
+```
+
+**No stock module renders an arbitrary live number.** The progress view hardcodes its
+value text to `FormatGeneralPercentage`, and its header comes from `InitFromData` and
+never changes. So "12 / 25" is not reachable without your own `HUDSidePanelModule` and a
+Unity prefab to go with it — the live percentage is what you get. Pick a capacity that
+makes the percentage readable if the exact count matters.
 
 ```csharp
 yield return new HUDSidePanelModuleInfoText.Data(new RawText("18 machines, 3 backed up"));
 ```
 
 That is fine for counts and states. For a rate, use the gauge.
+
+## Register each definition exactly once
+
+`IslandsModulesLookup.AddModuleProvider` is a plain `Dictionary.Add`, so claiming an id
+twice throws:
+
+```
+ArgumentException: An item with the same key has already been added. Key: My_Island
+  at IslandsModulesLookup.AddModuleProvider
+  at ShapezShifter.Flow.Atomic.IslandModulesExtender.AddModules
+```
+
+It happens during `InjectIslandsModuleProviders`, which runs while the **main menu** is
+being built — so the whole game fails to start, not just your island.
+
+The trap is that `AtomicIslands.Extend()` **always** registers a provider for the
+definition it carries. `WithoutModules()` does not mean "no registration"; it registers a
+`NoModulesProvider`. So if your island goes through the extender chain, its id is already
+claimed by the time your `IIslandModulesRewirer` runs.
+
+Pick one owner per id:
+
+```csharp
+// Definitions that travel the chain: give the provider to the chain.
+.WithCustomModules(new MyPanelModules(kind))
+
+// Definitions the chain never sees — a mirrored flip partner, say — only those go here.
+public void AddModules(IslandsModulesLookup modulesLookup)
+{
+    modulesLookup.AddModuleProvider(MyIds.Mirrored(kind), new MyPanelModules(kind));
+}
+```
+
+If you are wrapping providers vanilla already registered (the pattern at the top of this
+page), you are *replacing* entries rather than adding them, which is fine — the collision
+only arises when two registrations both try to `Add` the same new id.
 
 ## See also
 

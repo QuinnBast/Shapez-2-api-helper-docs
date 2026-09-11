@@ -65,6 +65,56 @@ The method you hook is a contract you are inventing, so pick a stable one:
 - **Avoid compiler-generated members** — lambdas, iterator state machines, local
   functions (`<>c__DisplayClass…`). Their names are not stable across builds.
 
+### Generic methods cannot be hooked at all
+
+This one is a hard stop, not a preference. MonoMod refuses any method whose declaring
+type is generic:
+
+```
+System.ArgumentException: Source method is generic, generic hooks are not supported
+  at MonoMod.RuntimeDetour.Hook.CheckSupported()
+```
+
+Being instantiated over a value type makes no difference — `Foo<ShapeId>.Bar()` is
+rejected exactly like `Foo<T>.Bar()`, even though a struct instantiation has its own
+native code and is intuitively "a concrete method". `Hook.CheckSupported` looks at the
+declaring type, not the instantiation.
+
+It fails at construction, so a hook set up in a mod constructor throws during mod load
+and takes the game's startup with it. It also compiles perfectly — `typeof(Foo<ShapeId>)
+.GetMethod("Bar")` is a valid `MethodBase`, so nothing warns you until launch.
+
+**The way round it is to find a non-generic choke point the calls already pass through.**
+Game code that is generic at one layer is usually reached through something that is not:
+a lane, a dispatcher, a factory. For example, an item entering a train station passes
+`DummyLane.CanAcceptItem` — non-generic — on its way to the generic
+`TrainBeltToCargoFillingContainer<T>` behind it, so a guard belongs on the lane.
+
+Two costs to accept when you relocate a hook this way: the choke point is usually hotter
+than the method you wanted, so order your type tests so the common case falls through
+cheaply; and it is broader, so the hook must check it is looking at the case it cares
+about rather than assuming.
+
+### Unwind a partial set of hooks
+
+Applying several related hooks is not atomic. If the third throws, the first two are live
+and the mod is half-patched — sometimes worse than not patching at all, because the pieces
+were designed to work together. Wrap the set and dispose what you applied:
+
+```csharp
+try
+{
+    Add(target1, hook1);
+    Add(target2, hook2);
+    Add(target3, hook3);   // throws
+}
+catch
+{
+    Dispose();             // drop the ones that did apply
+    throw;
+}
+```
+
 ## Interceptors and rewirers
 
 Before writing a detour, check whether Hijack already covers the structure you want to

@@ -37,6 +37,66 @@ IIslandPredictionFactoryBuilder     // islands
 The corresponding extenders are `BuildingPredictionExtender` and
 `IslandPredictionExtender`.
 
+## A transport island without one is a hole in the graph
+
+For a machine, a missing prediction means *its own* preview is blank. For anything that
+**carries items through** — a belt-like island, a crossing, a custom space path — the cost
+is bigger: the prediction graph stops there, so everything *downstream* reads as empty
+while real items flow through it perfectly. The usual report is "the shape/fluid readout
+flashes Empty even though it's working".
+
+Forwarding is cheap to model. Vanilla's `SpacePathPredictionSimulation` is the whole
+pattern — one bundle handed out as both receiver and provider, so whatever it is told
+arrives at the other end:
+
+```csharp
+public class MyPathPrediction : IItemBundlePredictionSimulation, ISimulation, IUpdatableSimulation
+{
+    private readonly ItemPredictionBundle<ItemPredictionConverter> Bundle =
+        ItemPredictionBundle.Create<ItemPredictionConverter>();
+
+    public int NumItemProviderBundles => 1;
+    public int NumItemReceiverBundles => 1;
+
+    public IItemPredictionProviderBundle GetItemProviderBundle(int outputIndex) => Bundle;
+    public IItemPredictionReceiverBundle GetItemReceiverBundle(int inputIndex) => Bundle;
+
+    public void Update(Ticks startTicks, Ticks deltaTicks) => Bundle.Update(deltaTicks);
+}
+```
+
+`ConnectableIslandPredictionSimulation` pairs prediction bundles to connectors by the same
+declaration order `ConnectableIslandSimulation` uses for the real ones, so one connector
+order serves both — an island with two independent paths returns two bundles and needs no
+extra wiring.
+
+### Reaching `WithPrediction` on the island chain
+
+The island fluent interfaces fork, and the obvious route is a dead end.
+`WithSimulation` off `IDefinedUnlockableIslandExtender` returns `IAtomicIslandExtender`,
+which has no `WithPrediction`. The prediction branch is only reachable through
+`IDefinedSimulatableIslandExtender` — and **nothing in the chain returns that interface**.
+Cast to it:
+
+```csharp
+IAtomicIslandExtender simulated = AtomicIslands.Extend()
+    .AllScenarios()
+    .WithIsland(island, group)
+    .UnlockedAtMilestone(new ByIndexMilestoneSelector(0))
+    .WithSimulation(new MySimulationFactory());
+
+((IDefinedSimulatableIslandExtender)simulated)
+    .WithDefaultPlacement()
+    .InToolbar(slot)
+    .WithPrediction(new MyPredictionFactory(), logger)
+    .WithoutModules()
+    .Build();
+```
+
+Safe, because every one of those interfaces is implemented by the same
+`AtomicIslandExtender` instance and both `WithDefaultPlacement` overloads are the same
+no-op.
+
 ## Registering a prediction system directly
 
 For prediction behaviour not tied to one building:

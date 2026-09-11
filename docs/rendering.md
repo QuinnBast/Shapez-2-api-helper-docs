@@ -116,6 +116,86 @@ means you cannot build up several blocks and submit them later, and you cannot c
 alpha and colour by calling both. If you need more than one property at once, keep your
 own `MaterialPropertyBlock` instance.
 
+## How an island gets drawn
+
+There is no single mechanism, and picking the wrong one costs an evening. An island's
+visual can come from any of three places:
+
+| Source | Where it lives | Transform |
+| --- | --- | --- |
+| `IslandMeshDrawer.Data` | CustomData on the definition | the island's own, one copy |
+| `ModularIslandMeshDrawer.Data` | CustomData on the definition | a `LocalChunkTransform` per mesh, drawn at `module.Transform * island.Transform` |
+| `IIslandPlatformDrawer` | a **session dictionary**, not CustomData | whatever the drawer does |
+
+The modular drawer is the one the game is migrating toward — `IIslandPlatformDrawer` is
+marked `[Obsolete("Replace this drawer with the more generic ModularIslandMeshDrawer")]`.
+
+**Space paths are the trap.** A space belt or pipe definition carries *no*
+`IslandMeshDrawer.Data` at all. Its meshes live on the **visual theme** —
+`SpaceBeltResources` / `SpacePipeResources`, reached through
+`ISpacePathResources.GetMeshMaterials(PathNodeClassification)` — and are drawn by a
+`SpacePathPlatformDrawer`. So borrowing a belt's look by reading its definition silently
+yields nothing.
+
+Two details that bite if you try to re-stage those meshes through the modular drawer
+anyway: `SpacePathPlatformDrawer` drops its mesh **2.07314 world units** and submits to
+`Renderers.SpacePaths`, while `ModularIslandMeshDrawer` does neither — and
+`LocalChunkTransform.Position` is an integer `ChunkVector`, so that sub-chunk drop cannot
+be expressed there at all. For a modded space-path-like island, write an
+`IIslandPlatformDrawer` instead.
+
+### Registering a platform drawer
+
+The dictionary is built by `GameSessionOrchestrator.CreateIslandPlatformDrawers`, which
+walks `GameIslands.SpaceBelts`, `SpacePipes` and the rail lists. A modded island is in
+none of them, and ShapezShifter has no rewirer for drawers — it has them for islands,
+placers, toolbars, simulation and prediction, but not this. Postfix-hook that one method
+and add your entries to the dictionary it just returned:
+
+```csharp
+DetourHelper.CreatePostfixHook(
+    (GameSessionOrchestrator orchestrator, GameIslands islands) =>
+        orchestrator.CreateIslandPlatformDrawers(islands),
+    (orchestrator, islands, drawers) =>
+    {
+        drawers[myDefinitionId] = new MyPlatformDrawer(
+            orchestrator.Theme.BaseResources.SpaceBelts);
+        return drawers;
+    });
+```
+
+Use the indexer, not `Add` — the vanilla loops use `Add`, and a duplicate key would take
+the whole session's drawer setup down. Implement `DrawOverview` too, or your island
+disappears on the zoomed-out map while everything around it stays.
+
+## Simulation renderers register themselves
+
+Anything travelling *through* a machine — items on a belt, fluid in a pipe — is drawn by
+an `ISimulationRenderer`, and those need **no registration at all**:
+
+```csharp
+Type[] second = (from type in GetAllLoadableTypes()
+    where typeof(IIslandSimulationRenderer).IsAssignableFrom(type)
+          && !type.IsAbstract && !type.IsInterface
+    select type).ToArray();
+```
+
+`GetAllLoadableTypes()` is `AppDomain.CurrentDomain.GetAssemblies()`, so it reaches a mod
+assembly as readily as the game's own, and each type is built through a dependency
+container (`IMapModel`, `GameMode`, `ISimulator` and friends are bound). That is why every
+vanilla renderer carries `[UsedImplicitly]` — nothing references them by name.
+
+Renderers are keyed by **simulation type**, not definition id, so one class covers every
+definition sharing that simulation. `SimulationsDrawer` logs an error and drops yours if
+another renderer already claims the same simulation type.
+
+One caveat if you subclass `SpacePathSimulationRenderer`: it sorts connectors into
+per-item-type lists, then runs the whole item list once against the shape lists and once
+against the fluid lists, casting each item unconditionally. Fine where every connector on
+a node carries the same item type — an `InvalidCastException` the first time a
+`FluidPackageItem` meets the shape pass. An island mixing belts and pipes has to pair its
+own connectors instead.
+
 ## Meshes
 
 | Type | Lifetime |
