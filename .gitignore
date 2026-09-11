@@ -1,27 +1,22 @@
-# Built site
-_site/
+# Decompiled game assemblies. Never commit these: they are tobspr's shipped code,
+# reconstructed for reference only, and cannot be redistributed. Regenerate locally
+# instead — see the README.
+decompiled/
 
-# Generated API metadata (produced from the game assemblies, which cannot be
-# redistributed). Regenerate with scripts/refresh-api-metadata.sh.
-api/*.yml
-api/.manifest
-api-metadata.tar.gz
+# tobspr's official sample repository, kept as a sibling checkout so it can still track
+# upstream. Cloned separately, not vendored here.
+shapez2-mod-samples/
 
-# Machine-specific DocFX config, written by scripts/write-local-config.sh
-docfx.metadata.local.json
-
-# Local full-build config with absolute paths (docfx.metadata.json + docfx.ci.json
-# are the committed, machine-independent pair)
-docfx.json
-docfx.local.json
-
-# DocFX + .NET scratch
-obj/
+# .NET build output
 bin/
-log.json
+obj/
+*.user
 
-# Editor
+# Rider / Visual Studio
 .idea/
 .vs/
-*.user
+*.suo
+*.userprefs
+
+# macOS
 .DS_Store

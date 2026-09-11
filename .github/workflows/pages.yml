@@ -3,6 +3,10 @@ name: Publish docs
 on:
   push:
     branches: [main]
+    # This is a monorepo: a commit to a mod should not redeploy the docs site.
+    paths:
+      - 'shapez2-modding-docs/**'
+      - '.github/workflows/pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -20,6 +24,12 @@ env:
   # Refresh with scripts/refresh-api-metadata.sh when the game updates.
   API_METADATA_TAG: api-metadata
   API_METADATA_FILE: api-metadata.tar.gz
+
+# The docs live in a subfolder of this monorepo, so every step that touches DocFX runs
+# from there. Only the Pages artifact path is absolute-from-root.
+defaults:
+  run:
+    working-directory: shapez2-modding-docs
 
 jobs:
   build:
@@ -70,7 +80,7 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: shapez2-modding-docs/_site
 
   deploy:
     needs: build

@@ -22,6 +22,12 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+# The docs live in a subfolder of this monorepo, so every step that touches DocFX runs
+# from there. Only the Pages artifact path is absolute-from-root.
+defaults:
+  run:
+    working-directory: shapez2-modding-docs
+
 jobs:
   build:
     runs-on: [self-hosted, shapez2]
@@ -68,7 +74,7 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: shapez2-modding-docs/_site
 
   deploy:
     needs: build
