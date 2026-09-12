@@ -1,0 +1,133 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>netstandard2.1</TargetFramework>
+        <Nullable>disable</Nullable>
+        <LangVersion>9</LangVersion>
+        <RootNamespace>PredictableBeltFilters</RootNamespace>
+        <!-- The publicizer and ShapezShifter each ship a copy of IgnoresAccessChecksTo -->
+        <NoWarn>$(NoWarn);CS0436</NoWarn>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <OutputPath>$(SPZ2_PERSISTENT)\mods\PredictableBeltFilters</OutputPath>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Dev)' == 'true'">
+        <OutputPath>$(SPZ2_PERSISTENT)\mods-dev\PredictableBeltFilters\</OutputPath>
+    </PropertyGroup>
+
+    <!--
+        dotnet build -t:SteamPublish   uploads the built mod folder to the workshop item
+        named in Steam/base.vdf. Build first: the target publishes whatever is already at
+        OutputPath, it does not build it.
+
+        The publish script is bash. MSBuild runs Exec through cmd, which does not have
+        Git's bin folder on its PATH, so a bare `sh` fails with 9009 even when Git Bash is
+        installed. Find the shell ourselves; set ShellExe to override.
+
+        OutputPath ends in a directory separator, and a trailing backslash before a closing
+        quote escapes the quote - which would leave a stray quote inside the content path.
+    -->
+    <Target Name="SteamPublish">
+        <PropertyGroup>
+            <ShellExe Condition="'$(ShellExe)' == '' And Exists('$(ProgramFiles)\Git\bin\sh.exe')">$(ProgramFiles)\Git\bin\sh.exe</ShellExe>
+            <ShellExe Condition="'$(ShellExe)' == '' And Exists('$(ProgramFiles)\Git\usr\bin\sh.exe')">$(ProgramFiles)\Git\usr\bin\sh.exe</ShellExe>
+            <ShellExe Condition="'$(ShellExe)' == '' And Exists('$(LocalAppData)\Programs\Git\bin\sh.exe')">$(LocalAppData)\Programs\Git\bin\sh.exe</ShellExe>
+            <PublishContentPath>$(OutputPath.TrimEnd('\'))</PublishContentPath>
+        </PropertyGroup>
+
+        <Error Condition="'$(ShellExe)' == ''"
+               Text="Could not find sh.exe. Install Git for Windows, or publish by hand: bash Steam/SteamPublish.sh &quot;$(PublishContentPath)&quot;" />
+
+        <Message Importance="high" Text="Publishing $(PublishContentPath) using $(ShellExe)" />
+
+        <Exec Command="&quot;$(ShellExe)&quot; ./Steam/SteamPublish.sh &quot;$(PublishContentPath)&quot;"
+              WorkingDirectory="$(MSBuildProjectDirectory)" />
+    </Target>
+
+    <ItemGroup>
+        <Reference Include="ShapezShifter">
+            <HintPath>$(SPZ2_SHIFTER)</HintPath>
+            <Private>False</Private>
+        </Reference>
+
+        <!-- GameMode and GameBuildings, to resolve the belt filter's definition group. -->
+        <Reference Include="SPZGameAssembly">
+            <HintPath>$(SPZ2_PATH)\SPZGameAssembly.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <!-- ScopedList, and Core.Logging.ILogger. -->
+        <Reference Include="Core">
+            <HintPath>$(SPZ2_PATH)\Core.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <Reference Include="Game.Core">
+            <HintPath>$(SPZ2_PATH)\Game.Core.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <!-- IMod. -->
+        <Reference Include="Game.Core.Modding">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Modding.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <!-- IBuildingDefinition and BuildingDefinitionId. -->
+        <Reference Include="Game.Core.Content">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Content.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <!-- GlobalTileCoordinate, the key the live-state registry is indexed by. -->
+        <Reference Include="Game.Core.Coordinates">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Coordinates.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <!-- ISimulation, IUpdatableSimulation, Ticks. -->
+        <Reference Include="Game.Core.Simulation">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Simulation.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <!-- BuildingInstance, SimulationStateContainer, ISimulationSystem and the
+             ISpecializedBuildingTenantSimulationSystem that identifies a system's building. -->
+        <Reference Include="Game.Core.Map.Simulation">
+            <HintPath>$(SPZ2_PATH)\Game.Core.Map.Simulation.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <!-- BeltFilterSimulationState, whose conductor carries the live filter signal. -->
+        <Reference Include="Game.Content">
+            <HintPath>$(SPZ2_PATH)\Game.Content.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <!-- The prediction graph itself, AtomicBuildingSimulationSystem, and the signal types. -->
+        <Reference Include="Game.Content.Features">
+            <HintPath>$(SPZ2_PATH)\Game.Content.Features.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <!-- Unity ships the JetBrains.Annotations types here; Core.dll only references them.
+             [UsedImplicitly] marks the mod class, which ShapezShifter constructs by reflection. -->
+        <Reference Include="UnityEngine.CoreModule">
+            <HintPath>$(SPZ2_PATH)\UnityEngine.CoreModule.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+        <!-- BuiltinPredictionSimulationSystems, which PredictionSystemsDependencies names. -->
+        <Reference Include="Game.Orchestration">
+            <HintPath>$(SPZ2_PATH)\Game.Orchestration.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+    </ItemGroup>
+
+    <!--
+        No publicizer. Every member this mod touches is already public: the prediction graph's
+        receivers and providers, AtomicBuildingSimulationSystem's protected virtual factory hook,
+        BeltFilterSimulationState.InputConductorState, and SpecializedBuildings as an explicit
+        interface implementation. Adding Krafs.Publicizer for nothing would only add a build step
+        and the "no members were publicized" warning that costs a session to second-guess.
+    -->
+
+    <ItemGroup>
+        <None Update="manifest.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+</Project>

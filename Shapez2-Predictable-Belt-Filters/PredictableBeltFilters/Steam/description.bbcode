@@ -1,0 +1,21 @@
+[h1]Predictable Belt Filters[/h1]
+The base game has a bug where Belt filters will not correctly show their output shape in the shape preview.
+This cause all downstream simulations and predictions to stop working!
+
+Well, after seeing many threads go by on reddit and discord about this problem, I decided to fix the problem!
+
+[h2]What this changes[/h2]
+[list]
+[*]Filter a shape: the forward belt predicts only that shape, the side belt predicts the rest.
+[*]Filter "on": everything forward, nothing to the side.
+[*]Filter "off": nothing forward, everything to the side.
+[*]Nothing wired: Nothing predicted on either side.
+[/list]
+
+[h2]Dependencies[/h2]
+[list]
+[*]Requires Shapez Shifter.
+[/list]
+
+Bugs and requests: https://github.com/QuinnBast/Shapez2-Mods/issues
+Licensed under Apache 2.0.

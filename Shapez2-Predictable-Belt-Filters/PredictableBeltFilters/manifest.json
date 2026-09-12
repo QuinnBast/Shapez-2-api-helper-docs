@@ -1,0 +1,21 @@
+{
+  "Version": "0.1.0",
+  "Title": "Predictable Belt Filters",
+  "Description": "Belt filters predict what they actually pass. Vanilla predicts a filter as a plain splitter, so both outputs claim to carry every shape on the line; this narrows each output to the shapes that really take it.",
+  "Author": "Quinn Bast",
+  "SavedModVersionCompabilityRangeWithSelf": "*-*",
+  "GameVersionSupportRange": "*-*",
+  "AffectsSaveGames": false,
+  "DisablesAchievements": false,
+  "Conflicts": [],
+  "Assemblies": [
+    "PredictableBeltFilters.dll"
+  ],
+  "Dependencies": [
+    {
+      "ModId": "steam:3542611357",
+      "ModTitle": "Shapez Shifter",
+      "Version": "*-*"
+    }
+  ]
+}
